@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <html lang="id">
-{"type": "function", "function": {"name": "web_extractor", "description": "Crawl webpage content, and if given a goal, further summarize the relevant content of the webpage.", "parameters": {"type": "object", "properties": {"urls": {"type": "array", "items": {"type": "string", "description": "One url."}, "minItems": 1, "description": "The webpage urls."}, "goal": {"type": "string", "description": "The goal of the visit for webpage(s). If empty, return the original content of the webpage(s)."}}, "required": ["urls", "goal"]}}}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PKKM Digital - MA Hasyim Asy'ari</title>
+    
+    <!-- Favicon Logo Madrasah -->
+    <link rel="icon" type="image/png" href="assets/images/logo-ma.png">
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="pkkm.css">
     
-    <!-- Firebase SDK (Compat) -->
+    <!-- Firebase SDK (Compat v10.12.0) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -16,11 +21,18 @@
 </head>
 <body>
 
+    <!-- Header dengan Logo -->
     <div class="header">
         <div class="header-content">
             <div class="brand">
-                <h1><i class="fas fa-award"></i> PKKM Digital</h1>
-                <p>MA Hasyim Asy'ari | Yayasan Al-Huffadh Butta Toa</p>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <!-- Logo Madrasah -->
+                    <img src="assets/images/logo-ma.png" alt="Logo MA Hasyim Asy'ari" class="logo-madrasah">
+                    <div>
+                        <h1><i class="fas fa-award"></i> PKKM Digital</h1>
+                        <p>MA Hasyim Asy'ari | Yayasan Al-Huffadh Butta Toa</p>
+                    </div>
+                </div>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div class="user-info">
@@ -32,6 +44,7 @@
         </div>
     </div>
 
+    <!-- Main Content -->
     <div class="container">
         <div id="loadingState" class="loading">
             <div class="spinner"></div>
@@ -48,7 +61,9 @@
 
             <!-- Admin Only: Setup Button -->
             <div id="adminPanel" style="display: none; margin-bottom: 20px; text-align: right;">
-                <button class="btn btn-warning" onclick="setupDataPKKM()"><i class="fas fa-database"></i> Setup Data Awal PKKM (Admin Only)</button>
+                <button class="btn btn-warning" onclick="setupDataPKKM()">
+                    <i class="fas fa-database"></i> Setup Data Awal PKKM (Admin Only)
+                </button>
             </div>
 
             <!-- Aspek Cards -->
@@ -56,7 +71,9 @@
                 <div class="card-header">
                     <h2><i class="fas fa-tasks"></i> Tugas Upload Bukti Fisik PKKM Saya</h2>
                 </div>
-                <div id="aspekContainer"></div>
+                <div id="aspekContainer">
+                    <!-- Data akan di-render oleh pkkm.js -->
+                </div>
             </div>
         </div>
     </div>
@@ -65,9 +82,12 @@
     <div class="modal" id="uploadModal">
         <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
-                <h3><i class="fas fa-cloud-upload-alt"></i> Upload Bukti Fisik</h3>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="assets/images/logo-ma.png" alt="Logo" style="width: 35px; height: 35px; border-radius: 4px;">
+                    <h3><i class="fas fa-cloud-upload-alt"></i> Upload Bukti Fisik</h3>
                 </div>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
             <div class="modal-body">
                 <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #0891b2;">
                     <h4 style="margin: 0 0 4px 0; color: #0e7490;" id="modalIndikatorTitle">Indikator</h4>
@@ -89,6 +109,7 @@
         </div>
     </div>
 
+    <!-- Main JavaScript -->
     <script src="pkkm.js"></script>
 </body>
 </html>
