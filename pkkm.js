@@ -28,27 +28,45 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPKKMData(); // Load data untuk semua orang
     
     auth.onAuthStateChanged(user => {
-        if (user) {
-            db.collection('users').doc(user.email.replace(/[@.]/g, '_')).get().then(doc => {
-                const dbData = doc.exists ? doc.data() : {};
-                userData = {
-                    uid: user.uid,
-                    email: user.email,
-                    nama: dbData.nama || user.email.split('@')[0],
-                    role: dbData.role || 'guru'
-                };
-                updateUIForLoggedInUser();
-                renderDashboard();
-                if (userData.role === 'admin' || userData.role === 'kepala') {
-                    loadAdminData();
-                }
-            });
-        } else {
-            userData = null;
-            updateUIForGuest();
+    if (user) {
+        // ✅ PERBAIKAN: Query berdasarkan field 'email', bukan Document ID
+        db.collection('users').where('email', '==', user.email).get().then(snapshot => {
+            let dbData = {};
+            let docId = null;
+            
+            if (!snapshot.empty) {
+                const doc = snapshot.docs[0];
+                dbData = doc.data();
+                docId = doc.id;
+            }
+            
+            userData = {
+                uid: user.uid,
+                email: user.email,
+                nama: dbData.nama || user.email.split('@')[0],
+                role: dbData.role || 'guru',
+                docId: docId  // Simpan docId untuk keperluan update/delete
+            };
+            
+            console.log('✅ User ditemukan:', userData.nama, '| Role:', userData.role);
+            
+            updateUIForLoggedInUser();
             renderDashboard();
-        }
-    });
+            
+            if (userData.role === 'admin' || userData.role === 'kepala') {
+                loadAdminData();
+            }
+        }).catch(err => {
+            console.error('Error fetching user:', err);
+            userData = { uid: user.uid, email: user.email, nama: user.email.split('@')[0], role: 'guru' };
+            updateUIForLoggedInUser();
+            renderDashboard();
+        });
+    } else {
+        userData = null;
+        updateUIForGuest();
+        renderDashboard();
+    }
 });
 
 // ══════════════════════════════════════════════
@@ -397,7 +415,7 @@ function renderAdminUsersTable() {
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${user.email || '-'}</td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><span style="background: ${user.role === 'admin' ? '#ef4444' : user.role === 'kepala' ? '#0891b2' : '#10b981'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">${(user.role || 'guru').toUpperCase()}</span></td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
-                <button onclick="deleteUser('${user.id}')" class="btn btn-danger" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;"><i class="fas fa-trash"></i></button>
+                <button onclick="deleteUser('${user.uid}')" class="btn btn-danger" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
     `).join('');
@@ -429,13 +447,14 @@ window.createNewUser = async function() {
         }
         const authResult = await response.json();
         
-        await db.collection('users').doc(email.replace(/[@.]/g, '_')).set({
-            nama: nama,
-            email: email,
-            role: role,
-            uid: authResult.localId,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        // ✅ PERBAIKAN: Gunakan UID sebagai Document ID (konsisten dengan Firebase Auth)
+await db.collection('users').doc(authResult.localId).set({
+    nama: nama,
+    email: email,
+    role: role,
+    uid: authResult.localId,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+});
         
         alert(`✅ User "${nama}" berhasil dibuat!`);
         document.getElementById('newUserName').value = '';
@@ -452,11 +471,12 @@ window.deleteUser = async function(userId) {
     if (!confirm('⚠️ Yakin ingin menghapus user ini dari database?')) return;
     
     try {
+        // userId sekarang adalah UID (Document ID yang benar)
         await db.collection('users').doc(userId).delete();
         alert('✅ User dihapus dari database.');
         loadAdminData();
     } catch (error) {
-        alert('❌ Gagal: ' + error.message);
+        alert(' Gagal: ' + error.message);
     }
 };
 
