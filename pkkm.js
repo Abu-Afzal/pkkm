@@ -420,7 +420,7 @@ function renderAdminUsersTable() {
     if (!tbody) return;
     
     if (allUsers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="padding: 12px; text-align: center; color: #64748b;">Belum ada user</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #64748b;">Belum ada user</td></tr>';
         return;
     }
     
@@ -428,9 +428,20 @@ function renderAdminUsersTable() {
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${user.nama || '-'}</td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${user.email || '-'}</td>
-            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><span style="background: ${user.role === 'admin' ? '#ef4444' : user.role === 'kepala' ? '#0891b2' : '#10b981'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">${(user.role || 'guru').toUpperCase()}</span></td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
-                <button onclick="deleteUser('${user.uid}')" class="btn btn-danger" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;"><i class="fas fa-trash"></i></button>
+                <span style="background: ${user.password ? '#10b981' : '#f59e0b'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
+                    ${user.password || 'Tidak ada'}
+                </span>
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
+                <span style="background: ${user.role === 'admin' ? '#ef4444' : user.role === 'kepala' ? '#0891b2' : '#10b981'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">
+                    ${(user.role || 'guru').toUpperCase()}
+                </span>
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
+                <button onclick="deleteUser('${user.uid}')" class="btn btn-danger" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                    <i class="fas fa-trash"></i>
+                </button>
             </td>
         </tr>
     `).join('');
@@ -444,8 +455,14 @@ window.createNewUser = async function() {
     const password = document.getElementById('newUserPassword').value;
     const role = document.getElementById('newUserRole').value;
     
-    if (!nama || !email || !password) { alert('❌ Nama, email, dan password wajib diisi!'); return; }
-    if (password.length < 6) { alert(' Password minimal 6 karakter!'); return; }
+    if (!nama || !email || !password) { 
+        alert(' Nama, email, dan password wajib diisi!'); 
+        return; 
+    }
+    if (password.length < 6) { 
+        alert('❌ Password minimal 6 karakter!'); 
+        return; 
+    }
     
     try {
         const apiKey = firebaseConfig.apiKey;
@@ -462,16 +479,17 @@ window.createNewUser = async function() {
         }
         const authResult = await response.json();
         
-        // ✅ PERBAIKAN: Gunakan UID sebagai Document ID (konsisten dengan Firebase Auth)
+        // ✅ SIMPAN PASSWORD DI DATABASE (untuk ditampilkan nanti)
         await db.collection('users').doc(authResult.localId).set({
             nama: nama,
             email: email,
+            password: password, // Simpan password plain text
             role: role,
             uid: authResult.localId,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        alert(`✅ User "${nama}" berhasil dibuat!`);
+        alert(`✅ User "${nama}" berhasil dibuat!\n\nEmail: ${email}\nPassword: ${password}`);
         document.getElementById('newUserName').value = '';
         document.getElementById('newUserEmail').value = '';
         document.getElementById('newUserPassword').value = '';
@@ -479,6 +497,40 @@ window.createNewUser = async function() {
     } catch (error) {
         alert('❌ Gagal membuat user: ' + error.message);
     }
+};
+
+// Fungsi Export User List ke Excel
+window.exportUsersToExcel = function() {
+    if (allUsers.length === 0) {
+        alert(' Tidak ada data user untuk diekspor!');
+        return;
+    }
+    
+    // Format data untuk Excel
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "No,Nama Lengkap,Email,Password,Role\n";
+    
+    allUsers.forEach((user, index) => {
+        const row = [
+            index + 1,
+            `"${user.nama || ''}"`,
+            user.email || '',
+            user.password || '',
+            (user.role || 'guru').toUpperCase()
+        ].join(",");
+        csvContent += row + "\n";
+    });
+    
+    // Buat link download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Daftar_User_PKKM_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    alert(`✅ Berhasil mengunduh ${allUsers.length} user!`);
 };
 
 window.deleteUser = async function(userId) {
