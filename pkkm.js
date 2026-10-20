@@ -21,7 +21,7 @@ let pkkmData = [];
 let allUsers = [];
 let currentIndikatorId = null;
 
-// ══════════════════════════════════════════════
+// ═════════════════════════════════════════════
 // 1. INIT & AUTH STATE
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
@@ -55,11 +55,29 @@ document.addEventListener('DOMContentLoaded', () => {
 // 2. TAB NAVIGATION
 // ══════════════════════════════════════════════
 window.switchMainTab = function(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    // Sembunyikan SEMUA tab content
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
+    });
     
-    document.getElementById(`tab-${tabName}`).style.display = 'block';
-    document.getElementById(`tabBtn${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
+    // Hapus active dari semua tab button
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Tampilkan tab yang dipilih
+    const selectedTab = document.getElementById(`tab-${tabName}`);
+    const selectedBtn = document.getElementById(`tabBtn${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+    
+    if (selectedTab) {
+        selectedTab.style.display = 'block';
+        selectedTab.classList.add('active');
+    }
+    
+    if (selectedBtn) {
+        selectedBtn.classList.add('active');
+    }
 };
 
 // ══════════════════════════════════════════════
@@ -98,7 +116,9 @@ async function loadPKKMData() {
         document.getElementById('statTotal').textContent = total;
         document.getElementById('statSelesai').textContent = selesai;
         document.getElementById('statBelum').textContent = total - selesai;
-        document.getElementById('loadingData').style.display = 'none';
+        
+        const loadingData = document.getElementById('loadingData');
+        if (loadingData) loadingData.style.display = 'none';
         
         renderDashboard();
     } catch (error) {
@@ -108,6 +128,7 @@ async function loadPKKMData() {
 
 function renderDashboard() {
     const container = document.getElementById('aspekContainer');
+    if (!container) return;
     
     container.innerHTML = pkkmData.map(aspek => {
         const aspekSelesai = aspek.indikator.filter(ind => ind.uploads.length > 0).length;
@@ -169,41 +190,90 @@ function renderDashboard() {
 }
 
 // ══════════════════════════════════════════════
-// 4. UI STATE (GUEST vs LOGIN)
+// 4. UI STATE (GUEST vs LOGIN) - DENGAN NULL CHECKS
 // ══════════════════════════════════════════════
-function updateUIForLoggedInUser() {
-    document.getElementById('guestBadge').style.display = 'none';
-    document.getElementById('userInfo').style.display = 'block';
-    document.getElementById('userName').textContent = userData.nama;
-    document.getElementById('userRole').textContent = userData.role;
-    document.getElementById('btnLogin').style.display = 'none';
-    document.getElementById('btnLogout').style.display = 'inline-block';
-    document.getElementById('mainNavTabs').style.display = 'flex';
+function updateUIForGuest() {
+    // Header elements
+    const guestBadge = document.getElementById('guestBadge');
+    const userInfo = document.getElementById('userInfo');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnLogout = document.getElementById('btnLogout');
     
-    if (userData.role === 'kepala' || userData.role === 'admin') {
-        document.getElementById('tabBtnAdmin').style.display = 'inline-block';
-    } else {
-        document.getElementById('tabBtnAdmin').style.display = 'none';
+    if (guestBadge) guestBadge.style.display = 'block';
+    if (userInfo) userInfo.style.display = 'none';
+    if (btnLogin) btnLogin.style.display = 'inline-block';
+    if (btnLogout) btnLogout.style.display = 'none';
+    
+    // Navigation tabs - SEMBUNYIKAN
+    const navTabs = document.getElementById('mainNavTabs');
+    if (navTabs) navTabs.style.display = 'none';
+    
+    // Tab buttons
+    const tabBtnAdmin = document.getElementById('tabBtnAdmin');
+    if (tabBtnAdmin) tabBtnAdmin.style.display = 'none';
+    
+    // PAKSA sembunyikan tab admin
+    const tabAdmin = document.getElementById('tab-admin');
+    if (tabAdmin) {
+        tabAdmin.style.display = 'none';
+        tabAdmin.classList.remove('active');
+    }
+    
+    // PAKSA tampilkan tab dashboard
+    const tabDashboard = document.getElementById('tab-dashboard');
+    if (tabDashboard) {
+        tabDashboard.style.display = 'block';
+        tabDashboard.classList.add('active');
     }
 }
 
-function updateUIForGuest() {
-    document.getElementById('guestBadge').style.display = 'block';
-    document.getElementById('userInfo').style.display = 'none';
-    document.getElementById('btnLogin').style.display = 'inline-block';
-    document.getElementById('btnLogout').style.display = 'none';
-    document.getElementById('mainNavTabs').style.display = 'none';
-    document.getElementById('tab-dashboard').style.display = 'block';
-    document.getElementById('tab-admin').style.display = 'none';
+function updateUIForLoggedInUser() {
+    // Header elements
+    const guestBadge = document.getElementById('guestBadge');
+    const userInfo = document.getElementById('userInfo');
+    const userName = document.getElementById('userName');
+    const userRole = document.getElementById('userRole');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnLogout = document.getElementById('btnLogout');
+    
+    if (guestBadge) guestBadge.style.display = 'none';
+    if (userInfo) userInfo.style.display = 'block';
+    if (userName) userName.textContent = userData.nama;
+    if (userRole) userRole.textContent = userData.role.toUpperCase();
+    if (btnLogin) btnLogin.style.display = 'none';
+    if (btnLogout) btnLogout.style.display = 'inline-block';
+    
+    // Tampilkan navigation tabs
+    const navTabs = document.getElementById('mainNavTabs');
+    if (navTabs) navTabs.style.display = 'flex';
+    
+    // Cek role untuk admin panel
+    const tabBtnAdmin = document.getElementById('tabBtnAdmin');
+    if (tabBtnAdmin) {
+        if (userData.role === 'admin' || userData.role === 'kepala') {
+            tabBtnAdmin.style.display = 'inline-block';
+        } else {
+            tabBtnAdmin.style.display = 'none';
+        }
+    }
+    
+    // Default: tampilkan dashboard
+    switchMainTab('dashboard');
 }
 
 // ══════════════════════════════════════════════
 // 5. LOGIN / LOGOUT
 // ══════════════════════════════════════════════
-window.openLoginModal = () => document.getElementById('loginModal').classList.add('active');
+window.openLoginModal = () => {
+    const modal = document.getElementById('loginModal');
+    if (modal) modal.classList.add('active');
+};
+
 window.closeLoginModal = () => {
-    document.getElementById('loginModal').classList.remove('active');
-    document.getElementById('loginError').style.display = 'none';
+    const modal = document.getElementById('loginModal');
+    const errorDiv = document.getElementById('loginError');
+    if (modal) modal.classList.remove('active');
+    if (errorDiv) errorDiv.style.display = 'none';
 };
 
 window.doLogin = async () => {
@@ -215,13 +285,19 @@ window.doLogin = async () => {
         await auth.signInWithEmailAndPassword(email, password);
         closeLoginModal();
     } catch (error) {
-        errorDiv.textContent = '❌ ' + error.message;
-        errorDiv.style.display = 'block';
+        if (errorDiv) {
+            errorDiv.textContent = '❌ ' + error.message;
+            errorDiv.style.display = 'block';
+        }
     }
 };
 
 window.logout = () => auth.signOut();
-window.closeModal = () => document.getElementById('uploadModal').classList.remove('active');
+
+window.closeModal = () => {
+    const modal = document.getElementById('uploadModal');
+    if (modal) modal.classList.remove('active');
+};
 
 // ══════════════════════════════════════════════
 // 6. UPLOAD LOGIC
@@ -229,11 +305,18 @@ window.closeModal = () => document.getElementById('uploadModal').classList.remov
 window.openUploadModal = (indId, kode, pertanyaan, bukti) => {
     if (!userData) { alert('Silakan login terlebih dahulu!'); return; }
     currentIndikatorId = indId;
-    document.getElementById('modalIndikatorTitle').textContent = `${kode} - ${pertanyaan}`;
-    document.getElementById('modalBuktiTitle').textContent = `Bukti: ${bukti}`;
-    document.getElementById('fileNameDisplay').textContent = '';
-    document.getElementById('fileInput').value = '';
-    document.getElementById('uploadModal').classList.add('active');
+    
+    const titleEl = document.getElementById('modalIndikatorTitle');
+    const buktiEl = document.getElementById('modalBuktiTitle');
+    const fileNameEl = document.getElementById('fileNameDisplay');
+    const fileInput = document.getElementById('fileInput');
+    const modal = document.getElementById('uploadModal');
+    
+    if (titleEl) titleEl.textContent = `${kode} - ${pertanyaan}`;
+    if (buktiEl) buktiEl.textContent = `Bukti: ${bukti}`;
+    if (fileNameEl) fileNameEl.textContent = '';
+    if (fileInput) fileInput.value = '';
+    if (modal) modal.classList.add('active');
 };
 
 window.handleFileSelect = async (event) => {
@@ -241,7 +324,8 @@ window.handleFileSelect = async (event) => {
     if (!file || !userData) return;
     if (file.size > 10 * 1024 * 1024) { alert("Maksimal 10MB!"); return; }
 
-    document.getElementById('fileNameDisplay').innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengupload...`;
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    if (fileNameDisplay) fileNameDisplay.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengupload...`;
     
     try {
         const storageRef = storage.ref(`pkkm_uploads/${userData.uid}/${Date.now()}_${file.name}`);
@@ -277,6 +361,18 @@ window.handleFileSelect = async (event) => {
 // ══════════════════════════════════════════════
 // 7. ADMIN FUNCTIONS (USER MANAGEMENT & ASSIGNMENT)
 // ══════════════════════════════════════════════
+function checkAdminAccess() {
+    if (!userData) {
+        alert('⛔ Akses ditolak! Silakan login terlebih dahulu.');
+        return false;
+    }
+    if (userData.role !== 'admin' && userData.role !== 'kepala') {
+        alert('⛔ Akses ditolak! Hanya Administrator atau Kepala Madrasah yang dapat mengakses fitur ini.');
+        return false;
+    }
+    return true;
+}
+
 async function loadAdminData() {
     try {
         const usersSnapshot = await db.collection('users').get();
@@ -293,6 +389,8 @@ async function loadAdminData() {
 
 function renderAdminUsersTable() {
     const tbody = document.getElementById('adminUsersTable');
+    if (!tbody) return;
+    
     tbody.innerHTML = allUsers.map(user => `
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${user.nama || '-'}</td>
@@ -305,8 +403,9 @@ function renderAdminUsersTable() {
     `).join('');
 }
 
-// Membuat user via REST API agar admin tidak logout
 window.createNewUser = async function() {
+    if (!checkAdminAccess()) return;
+    
     const nama = document.getElementById('newUserName').value.trim();
     const email = document.getElementById('newUserEmail').value.trim();
     const password = document.getElementById('newUserPassword').value;
@@ -316,7 +415,6 @@ window.createNewUser = async function() {
     if (password.length < 6) { alert('❌ Password minimal 6 karakter!'); return; }
     
     try {
-        // 1. Create di Firebase Auth via REST API (tanpa logout admin)
         const apiKey = firebaseConfig.apiKey;
         const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
         const response = await fetch(url, {
@@ -331,7 +429,6 @@ window.createNewUser = async function() {
         }
         const authResult = await response.json();
         
-        // 2. Simpan metadata di Firestore
         await db.collection('users').doc(email.replace(/[@.]/g, '_')).set({
             nama: nama,
             email: email,
@@ -346,12 +443,14 @@ window.createNewUser = async function() {
         document.getElementById('newUserPassword').value = '';
         loadAdminData();
     } catch (error) {
-        alert('❌ Gagal membuat user: ' + error.message);
+        alert(' Gagal membuat user: ' + error.message);
     }
 };
 
 window.deleteUser = async function(userId) {
+    if (!checkAdminAccess()) return;
     if (!confirm('⚠️ Yakin ingin menghapus user ini dari database?')) return;
+    
     try {
         await db.collection('users').doc(userId).delete();
         alert('✅ User dihapus dari database.');
@@ -364,6 +463,7 @@ window.deleteUser = async function(userId) {
 function renderAdminAssignments() {
     const filter = document.getElementById('filterDimensi').value;
     const container = document.getElementById('adminAssignmentList');
+    if (!container) return;
     
     let filteredIndicators = [];
     pkkmData.forEach(aspek => {
@@ -397,30 +497,35 @@ function renderAdminAssignments() {
 }
 
 window.saveAssignment = async function(indikatorId, btn) {
+    if (!checkAdminAccess()) return;
+    
     const container = btn.closest('div');
     const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
     const penugasan = Array.from(checkboxes).map(cb => cb.value);
     
-    btn.disabled = true; btn.innerHTML = 'Menyimpan...';
+    btn.disabled = true; 
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+    
     try {
         await db.collection('pkkm_indikator').doc(indikatorId).update({
             penugasan: penugasan,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         alert('✅ Penugasan berhasil disimpan!');
-        loadPKKMData(); // Refresh dashboard data
+        loadPKKMData();
     } catch (error) {
         alert('❌ Gagal: ' + error.message);
     } finally {
-        btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Simpan Penugasan';
+        btn.disabled = false; 
+        btn.innerHTML = '<i class="fas fa-save"></i> Simpan Penugasan';
     }
 };
 
 // ══════════════════════════════════════════════
 // 8. SETUP DATA AWAL (ADMIN ONLY)
-// ══════════════════════════════════════════════
+// ═════════════════════════════════════════════
 window.setupDataPKKM = async function() {
-    if (!userData || (userData.role !== 'kepala' && userData.role !== 'admin')) { alert("Hanya Admin!"); return; }
+    if (!checkAdminAccess()) return;
     if (!confirm('⚠️ Ini akan mengisi database dengan data PKKM lengkap. Lanjutkan?')) return;
     
     try {
@@ -450,21 +555,11 @@ window.setupDataPKKM = async function() {
             { aspek_id: 'aspek_C', kode: 'C.3.1', pertanyaan: 'Memahami dan menghayati arti dan tujuan perubahan (inovasi) madrasah.', bukti_diharapkan: ['Program pengembangan kewirausahaan', 'Profil madrasah'], penugasan: timC },
             { aspek_id: 'aspek_D', kode: 'D.4.1', pertanyaan: 'Mengidentifikasi masalah yang guru hadapi dalam pelaksanaan pembelajaran.', bukti_diharapkan: ['Program supervisi', 'Jadwal supervisi', 'SK tim supervisor'], penugasan: timD },
             { aspek_id: 'aspek_E', kode: 'E.5.1', pertanyaan: 'Prestasi akademik peserta didik.', bukti_diharapkan: ['Piagam/sertifikat kejuaraan akademik'], penugasan: timE }
-            // Tambahkan indikator lainnya sesuai PDF di sini jika perlu
         ];
         
         for (const ind of indikatorList) {
             const docId = `butir_${ind.aspek_id.replace('aspek_', '')}_${ind.kode.replace(/\./g, '_')}`;
             await db.collection('pkkm_indikator').doc(docId).set(ind);
-        }
-        
-        // Setup default users jika belum ada
-        const defaultUsers = [
-            { nama: "Natsir, S.Pd.I", email: "natsir@mahasyimasyari.sch.id", role: "kepala" },
-            { nama: "Elis Harianto, S.Pd", email: "elis@mahasyimasyari.sch.id", role: "guru" }
-        ];
-        for (const u of defaultUsers) {
-            await db.collection('users').doc(u.email.replace(/[@.]/g, '_')).set(u);
         }
         
         alert('✅ Setup Data Berhasil! Silakan refresh halaman.');
