@@ -429,16 +429,22 @@ function renderAdminUsersTable() {
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${user.nama || '-'}</td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${user.email || '-'}</td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
-                <span style="background: ${user.password ? '#10b981' : '#f59e0b'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                    ${user.password || 'Tidak ada'}
-                </span>
+                ${user.password ? 
+                    `<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; font-family: monospace;">${user.password}</span>` : 
+                    `<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">Belum diset</span>`
+                }
             </td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
                 <span style="background: ${user.role === 'admin' ? '#ef4444' : user.role === 'kepala' ? '#0891b2' : '#10b981'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">
                     ${(user.role || 'guru').toUpperCase()}
                 </span>
             </td>
-            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; gap: 4px;">
+                ${!user.password ? `
+                    <button onclick="setPassword('${user.uid}', '${user.email}')" class="btn btn-warning" style="background: #f59e0b; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;" title="Set Password">
+                        <i class="fas fa-key"></i>
+                    </button>
+                ` : ''}
                 <button onclick="deleteUser('${user.uid}')" class="btn btn-danger" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -447,55 +453,30 @@ function renderAdminUsersTable() {
     `).join('');
 }
 
-window.createNewUser = async function() {
-    if (!checkAdminAccess()) return;
+// Fungsi untuk set password user yang belum punya
+window.setPassword = async function(userId, email) {
+    const newPassword = prompt(`Masukkan password baru untuk ${email}:\n(Minimal 6 karakter)`);
     
-    const nama = document.getElementById('newUserName').value.trim();
-    const email = document.getElementById('newUserEmail').value.trim();
-    const password = document.getElementById('newUserPassword').value;
-    const role = document.getElementById('newUserRole').value;
-    
-    if (!nama || !email || !password) { 
-        alert(' Nama, email, dan password wajib diisi!'); 
-        return; 
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+        alert('❌ Password minimal 6 karakter!');
+        return;
     }
-    if (password.length < 6) { 
-        alert('❌ Password minimal 6 karakter!'); 
-        return; 
+    
+    if (!confirm(`⚠️ Set password "${newPassword}" untuk ${email}?\n\nCatatan: Password akan disimpan di database untuk ditampilkan di tabel.\nUser perlu login dengan password ini.`)) {
+        return;
     }
     
     try {
-        const apiKey = firebaseConfig.apiKey;
-        const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email, password: password, returnSecureToken: false })
+        // Update password di Firestore (untuk tampilan)
+        await db.collection('users').doc(userId).update({
+            password: newPassword
         });
         
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error.message);
-        }
-        const authResult = await response.json();
-        
-        // ✅ SIMPAN PASSWORD DI DATABASE (untuk ditampilkan nanti)
-        await db.collection('users').doc(authResult.localId).set({
-            nama: nama,
-            email: email,
-            password: password, // Simpan password plain text
-            role: role,
-            uid: authResult.localId,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        alert(`✅ User "${nama}" berhasil dibuat!\n\nEmail: ${email}\nPassword: ${password}`);
-        document.getElementById('newUserName').value = '';
-        document.getElementById('newUserEmail').value = '';
-        document.getElementById('newUserPassword').value = '';
+        alert(`✅ Password untuk ${email} berhasil diset!\n\nPassword: ${newPassword}`);
         loadAdminData();
     } catch (error) {
-        alert('❌ Gagal membuat user: ' + error.message);
+        alert(' Gagal: ' + error.message);
     }
 };
 
