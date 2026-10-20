@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+{"type": "function", "function": {"name": "web_extractor", "description": "Crawl webpage content, and if given a goal, further summarize the relevant content of the webpage.", "parameters": {"type": "object", "properties": {"urls": {"type": "array", "items": {"type": "string", "description": "One url."}, "minItems": 1, "description": "The webpage urls."}, "goal": {"type": "string", "description": "The goal of the visit for webpage(s). If empty, return the original content of the webpage(s)."}}, "required": ["urls", "goal"]}}}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PKKM Digital - MA Hasyim Asy'ari</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="pkkm.css">
+    
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-content">
+            <div class="brand">
+                <h1><i class="fas fa-award"></i> PKKM Digital</h1>
+                <p>MA Hasyim Asy'ari | Yayasan Al-Huffadh Butta Toa</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="user-info">
+                    <div class="nama" id="userName">Memuat...</div>
+                    <div class="role" id="userRole">-</div>
+                </div>
+                <button class="btn-back" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+            <p>Memverifikasi akses & memuat data PKKM...</p>
+        </div>
+
+        <div id="contentState" style="display: none;">
+            <!-- Dashboard Stats -->
+            <div class="stats-grid">
+                <div class="stat-box"><div class="value" id="statTotal">0</div><div class="label">Total Indikator</div></div>
+                <div class="stat-box" style="border-left-color: #10b981;"><div class="value" id="statSelesai">0</div><div class="label">Sudah Diupload</div></div>
+                <div class="stat-box" style="border-left-color: #ef4444;"><div class="value" id="statBelum">0</div><div class="label">Belum Diupload</div></div>
+            </div>
+
+            <!-- Admin Only: Setup Button -->
+            <div id="adminPanel" style="display: none; margin-bottom: 20px; text-align: right;">
+                <button class="btn btn-warning" onclick="setupDataPKKM()"><i class="fas fa-database"></i> Setup Data Awal PKKM (Admin Only)</button>
+            </div>
+
+            <!-- Aspek Cards -->
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-tasks"></i> Tugas Upload Bukti Fisik PKKM Saya</h2>
+                </div>
+                <div id="aspekContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Upload -->
+    <div class="modal" id="uploadModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-cloud-upload-alt"></i> Upload Bukti Fisik</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+                </div>
+            <div class="modal-body">
+                <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #0891b2;">
+                    <h4 style="margin: 0 0 4px 0; color: #0e7490;" id="modalIndikatorTitle">Indikator</h4>
+                    <p style="margin: 0; color: #64748b; font-size: 0.9rem;" id="modalBuktiTitle">Bukti yang diperlukan: -</p>
+                </div>
+
+                <div id="uploadArea">
+                    <label class="file-drop-area">
+                        <span class="file-drop-text"><i class="fas fa-cloud-upload-alt"></i> Klik atau seret file ke sini (PDF, JPG, PNG, DOCX)</span>
+                        <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="handleFileSelect(event)">
+                    </label>
+                    <div id="fileNameDisplay" style="margin-top: 10px; font-weight: 600; color: #0e7490;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 20px; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="pkkm.js"></script>
+</body>
+</html>
