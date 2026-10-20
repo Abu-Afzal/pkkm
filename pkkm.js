@@ -28,50 +28,51 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPKKMData(); // Load data untuk semua orang
     
     auth.onAuthStateChanged(user => {
-    if (user) {
-        // ✅ PERBAIKAN: Query berdasarkan field 'email', bukan Document ID
-        db.collection('users').where('email', '==', user.email).get().then(snapshot => {
-            let dbData = {};
-            let docId = null;
-            
-            if (!snapshot.empty) {
-                const doc = snapshot.docs[0];
-                dbData = doc.data();
-                docId = doc.id;
-            }
-            
-            userData = {
-                uid: user.uid,
-                email: user.email,
-                nama: dbData.nama || user.email.split('@')[0],
-                role: dbData.role || 'guru',
-                docId: docId  // Simpan docId untuk keperluan update/delete
-            };
-            
-            console.log('✅ User ditemukan:', userData.nama, '| Role:', userData.role);
-            
-            updateUIForLoggedInUser();
+        if (user) {
+            // ✅ PERBAIKAN: Query berdasarkan field 'email', bukan Document ID
+            db.collection('users').where('email', '==', user.email).get().then(snapshot => {
+                let dbData = {};
+                let docId = null;
+                
+                if (!snapshot.empty) {
+                    const doc = snapshot.docs[0];
+                    dbData = doc.data();
+                    docId = doc.id;
+                }
+                
+                userData = {
+                    uid: user.uid,
+                    email: user.email,
+                    nama: dbData.nama || user.email.split('@')[0],
+                    role: dbData.role || 'guru',
+                    docId: docId  // Simpan docId untuk keperluan update/delete
+                };
+                
+                console.log('✅ User ditemukan:', userData.nama, '| Role:', userData.role);
+                
+                updateUIForLoggedInUser();
+                renderDashboard();
+                
+                if (userData.role === 'admin' || userData.role === 'kepala') {
+                    loadAdminData();
+                }
+            }).catch(err => {
+                console.error('Error fetching user:', err);
+                userData = { uid: user.uid, email: user.email, nama: user.email.split('@')[0], role: 'guru' };
+                updateUIForLoggedInUser();
+                renderDashboard();
+            });
+        } else {
+            userData = null;
+            updateUIForGuest();
             renderDashboard();
-            
-            if (userData.role === 'admin' || userData.role === 'kepala') {
-                loadAdminData();
-            }
-        }).catch(err => {
-            console.error('Error fetching user:', err);
-            userData = { uid: user.uid, email: user.email, nama: user.email.split('@')[0], role: 'guru' };
-            updateUIForLoggedInUser();
-            renderDashboard();
-        });
-    } else {
-        userData = null;
-        updateUIForGuest();
-        renderDashboard();
-    }
+        }
+    }); // ✅ PERBAIKAN: Ini yang hilang - penutup onAuthStateChanged
 });
 
-// ══════════════════════════════════════════════
+// ═════════════════════════════════════════════
 // 2. TAB NAVIGATION
-// ══════════════════════════════════════════════
+// ═════════════════════════════════════════════
 window.switchMainTab = function(tabName) {
     // Sembunyikan SEMUA tab content
     document.querySelectorAll('.tab-content').forEach(tab => {
@@ -131,9 +132,13 @@ async function loadPKKMData() {
             pkkmData.push(aspek);
         });
 
-        document.getElementById('statTotal').textContent = total;
-        document.getElementById('statSelesai').textContent = selesai;
-        document.getElementById('statBelum').textContent = total - selesai;
+        const statTotalEl = document.getElementById('statTotal');
+        const statSelesaiEl = document.getElementById('statSelesai');
+        const statBelumEl = document.getElementById('statBelum');
+        
+        if (statTotalEl) statTotalEl.textContent = total;
+        if (statSelesaiEl) statSelesaiEl.textContent = selesai;
+        if (statBelumEl) statBelumEl.textContent = total - selesai;
         
         const loadingData = document.getElementById('loadingData');
         if (loadingData) loadingData.style.display = 'none';
@@ -147,6 +152,11 @@ async function loadPKKMData() {
 function renderDashboard() {
     const container = document.getElementById('aspekContainer');
     if (!container) return;
+    
+    if (pkkmData.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #64748b;"><p>Belum ada data. Login sebagai admin dan jalankan "Setup Data Awal".</p></div>';
+        return;
+    }
     
     container.innerHTML = pkkmData.map(aspek => {
         const aspekSelesai = aspek.indikator.filter(ind => ind.uploads.length > 0).length;
@@ -319,7 +329,7 @@ window.closeModal = () => {
 
 // ══════════════════════════════════════════════
 // 6. UPLOAD LOGIC
-// ══════════════════════════════════════════════
+// ═════════════════════════════════════════════
 window.openUploadModal = (indId, kode, pertanyaan, bukti) => {
     if (!userData) { alert('Silakan login terlebih dahulu!'); return; }
     currentIndikatorId = indId;
@@ -381,7 +391,7 @@ window.handleFileSelect = async (event) => {
 // ══════════════════════════════════════════════
 function checkAdminAccess() {
     if (!userData) {
-        alert('⛔ Akses ditolak! Silakan login terlebih dahulu.');
+        alert(' Akses ditolak! Silakan login terlebih dahulu.');
         return false;
     }
     if (userData.role !== 'admin' && userData.role !== 'kepala') {
@@ -409,6 +419,11 @@ function renderAdminUsersTable() {
     const tbody = document.getElementById('adminUsersTable');
     if (!tbody) return;
     
+    if (allUsers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="padding: 12px; text-align: center; color: #64748b;">Belum ada user</td></tr>';
+        return;
+    }
+    
     tbody.innerHTML = allUsers.map(user => `
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${user.nama || '-'}</td>
@@ -430,7 +445,7 @@ window.createNewUser = async function() {
     const role = document.getElementById('newUserRole').value;
     
     if (!nama || !email || !password) { alert('❌ Nama, email, dan password wajib diisi!'); return; }
-    if (password.length < 6) { alert('❌ Password minimal 6 karakter!'); return; }
+    if (password.length < 6) { alert(' Password minimal 6 karakter!'); return; }
     
     try {
         const apiKey = firebaseConfig.apiKey;
@@ -448,13 +463,13 @@ window.createNewUser = async function() {
         const authResult = await response.json();
         
         // ✅ PERBAIKAN: Gunakan UID sebagai Document ID (konsisten dengan Firebase Auth)
-await db.collection('users').doc(authResult.localId).set({
-    nama: nama,
-    email: email,
-    role: role,
-    uid: authResult.localId,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-});
+        await db.collection('users').doc(authResult.localId).set({
+            nama: nama,
+            email: email,
+            role: role,
+            uid: authResult.localId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
         
         alert(`✅ User "${nama}" berhasil dibuat!`);
         document.getElementById('newUserName').value = '';
@@ -462,7 +477,7 @@ await db.collection('users').doc(authResult.localId).set({
         document.getElementById('newUserPassword').value = '';
         loadAdminData();
     } catch (error) {
-        alert(' Gagal membuat user: ' + error.message);
+        alert('❌ Gagal membuat user: ' + error.message);
     }
 };
 
@@ -476,7 +491,7 @@ window.deleteUser = async function(userId) {
         alert('✅ User dihapus dari database.');
         loadAdminData();
     } catch (error) {
-        alert(' Gagal: ' + error.message);
+        alert('❌ Gagal: ' + error.message);
     }
 };
 
@@ -493,7 +508,7 @@ function renderAdminAssignments() {
     });
     
     if (filteredIndicators.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #64748b;">Belum ada data. Klik "Jalankan Setup Data" terlebih dahulu.</p>';
+        container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 40px;">Belum ada data. Klik "Jalankan Setup Data" terlebih dahulu.</p>';
         return;
     }
     
@@ -543,7 +558,7 @@ window.saveAssignment = async function(indikatorId, btn) {
 
 // ══════════════════════════════════════════════
 // 8. SETUP DATA AWAL (ADMIN ONLY)
-// ═════════════════════════════════════════════
+// ══════════════════════════════════════════════
 window.setupDataPKKM = async function() {
     if (!checkAdminAccess()) return;
     if (!confirm('⚠️ Ini akan mengisi database dengan data PKKM lengkap. Lanjutkan?')) return;
