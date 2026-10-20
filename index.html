@@ -4,16 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PKKM Digital - MA Hasyim Asy'ari</title>
-    
-    <!-- Favicon Logo Madrasah -->
-    <link rel="icon" type="image/png" href="assets/images/logo-ma.png">
-    
-    <!-- Font Awesome -->
+    <link rel="icon" type="image/png" href="assets/logo-ma.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="pkkm.css">
     
-    <!-- Firebase SDK (Compat v10.12.0) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -21,13 +16,12 @@
 </head>
 <body>
 
-    <!-- Header dengan Logo -->
+    <!-- Header -->
     <div class="header">
         <div class="header-content">
             <div class="brand">
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <!-- Logo Madrasah -->
-                    <img src="assets/logo-ma.png" alt="Logo MA Hasyim Asy'ari" class="logo-madrasah">
+                    <img src="assets/images/logo-ma.png" alt="Logo MA Hasyim Asy'ari" class="logo-madrasah">
                     <div>
                         <h1><i class="fas fa-award"></i> PKKM Digital</h1>
                         <p>MA Hasyim Asy'ari | Yayasan Al-Huffadh Butta Toa</p>
@@ -35,45 +29,69 @@
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="user-info">
-                    <div class="nama" id="userName">Memuat...</div>
-                    <div class="role" id="userRole">-</div>
+                <!-- Status User -->
+                <div id="guestBadge" class="badge" style="background: #f1f5f9; color: #64748b; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                    <i class="fas fa-eye"></i> Mode Tamu (View Only)
                 </div>
-                <button class="btn-back" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+                <div id="userInfo" style="display: none; text-align: right;">
+                    <div class="nama" id="userName" style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">-</div>
+                    <div class="role" id="userRole" style="font-size: 0.75rem; color: #0891b2; text-transform: uppercase;">-</div>
+                </div>
+                
+                <!-- Tombol Login/Logout -->
+                <button id="btnLogin" class="btn btn-primary" onclick="openLoginModal()" style="padding: 8px 16px;">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+                <button id="btnLogout" class="btn btn-secondary" onclick="logout()" style="display: none; padding: 8px 16px;">
+                    <i class="fas fa-sign-out-alt"></i> Keluar
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Main Content -->
     <div class="container">
-        <div id="loadingState" class="loading">
-            <div class="spinner"></div>
-            <p>Memverifikasi akses & memuat data PKKM...</p>
+        <!-- Stats Dashboard (Langsung Tampil untuk Tamu) -->
+        <div class="stats-grid">
+            <div class="stat-box"><div class="value" id="statTotal">0</div><div class="label">Total Indikator</div></div>
+            <div class="stat-box" style="border-left-color: #10b981;"><div class="value" id="statSelesai">0</div><div class="label">Sudah Diupload</div></div>
+            <div class="stat-box" style="border-left-color: #ef4444;"><div class="value" id="statBelum">0</div><div class="label">Belum Diupload</div></div>
         </div>
 
-        <div id="contentState" style="display: none;">
-            <!-- Dashboard Stats -->
-            <div class="stats-grid">
-                <div class="stat-box"><div class="value" id="statTotal">0</div><div class="label">Total Indikator</div></div>
-                <div class="stat-box" style="border-left-color: #10b981;"><div class="value" id="statSelesai">0</div><div class="label">Sudah Diupload</div></div>
-                <div class="stat-box" style="border-left-color: #ef4444;"><div class="value" id="statBelum">0</div><div class="label">Belum Diupload</div></div>
-            </div>
+        <!-- Admin Panel (Hanya muncul jika login sebagai Kepala Madrasah) -->
+        <div id="adminPanel" style="display: none; margin-bottom: 20px; text-align: right;">
+            <button class="btn btn-warning" onclick="setupDataPKKM()">
+                <i class="fas fa-database"></i> Setup Data Awal PKKM
+            </button>
+        </div>
 
-            <!-- Admin Only: Setup Button -->
-            <div id="adminPanel" style="display: none; margin-bottom: 20px; text-align: right;">
-                <button class="btn btn-warning" onclick="setupDataPKKM()">
-                    <i class="fas fa-database"></i> Setup Data Awal PKKM (Admin Only)
+        <!-- Aspek Cards -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-tasks"></i> Progres & Tugas Bukti Fisik PKKM</h2>
+            </div>
+            <div id="loadingData" style="text-align: center; padding: 40px; color: #64748b;">
+                <div class="spinner"></div> Memuat data...
+            </div>
+            <div id="aspekContainer"></div>
+        </div>
+    </div>
+
+    <!-- Modal Login -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-lock"></i> Login Guru/Petugas</h3>
+                <button class="close-btn" onclick="closeLoginModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">Silakan login untuk mengupload bukti fisik sesuai tugas Anda.</p>
+                <input type="email" id="loginEmail" placeholder="Email (contoh: elis@mahasyimasyari.sch.id)" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+                <input type="password" id="loginPassword" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+                <div id="loginError" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 12px; display: none;"></div>
+                <button onclick="doLogin()" class="btn btn-primary" style="width: 100%; padding: 12px;">
+                    <i class="fas fa-sign-in-alt"></i> Masuk
                 </button>
-            </div>
-
-            <!-- Aspek Cards -->
-            <div class="card">
-                <div class="card-header">
-                    <h2><i class="fas fa-tasks"></i> Tugas Upload Bukti Fisik PKKM Saya</h2>
-                </div>
-                <div id="aspekContainer">
-                    <!-- Data akan di-render oleh pkkm.js -->
-                </div>
             </div>
         </div>
     </div>
@@ -82,34 +100,28 @@
     <div class="modal" id="uploadModal">
         <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <img src="assets/images/logo-ma.png" alt="Logo" style="width: 35px; height: 35px; border-radius: 4px;">
-                    <h3><i class="fas fa-cloud-upload-alt"></i> Upload Bukti Fisik</h3>
-                </div>
+                <h3><i class="fas fa-cloud-upload-alt"></i> Upload Bukti Fisik</h3>
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #0891b2;">
                     <h4 style="margin: 0 0 4px 0; color: #0e7490;" id="modalIndikatorTitle">Indikator</h4>
-                    <p style="margin: 0; color: #64748b; font-size: 0.9rem;" id="modalBuktiTitle">Bukti yang diperlukan: -</p>
+                    <p style="margin: 0; color: #64748b; font-size: 0.9rem;" id="modalBuktiTitle">Bukti: -</p>
                 </div>
-
                 <div id="uploadArea">
                     <label class="file-drop-area">
-                        <span class="file-drop-text"><i class="fas fa-cloud-upload-alt"></i> Klik atau seret file ke sini (PDF, JPG, PNG, DOCX)</span>
+                        <span class="file-drop-text"><i class="fas fa-cloud-upload-alt"></i> Klik untuk pilih file (PDF, JPG, PNG, DOCX)</span>
                         <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="handleFileSelect(event)">
                     </label>
                     <div id="fileNameDisplay" style="margin-top: 10px; font-weight: 600; color: #0e7490;"></div>
                 </div>
-
-                <div style="display: flex; justify-content: flex-end; margin-top: 20px; gap: 10px;">
+                <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
                     <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Main JavaScript -->
     <script src="pkkm.js"></script>
 </body>
 </html>
