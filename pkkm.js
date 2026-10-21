@@ -188,15 +188,22 @@ function renderDashboard() {
                                         <strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}
                                     </div>
                                     ${hasUpload ? `
-                                        <div style="margin-top: 8px; padding: 8px; background: #f0fdf4; border-radius: 4px; font-size: 0.85rem;">
-                                            <i class="fas fa-check-circle" style="color: #10b981;"></i> 
-                                            <strong>${lastUpload.file_name}</strong> 
-                                            <span style="color: #64748b;">- diupload oleh ${lastUpload.guru_nama}</span>
-                                            <a href="${lastUpload.file_url}" target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600;"><i class="fas fa-download"></i> Download</a>
-                                        </div>
-                                    ` : `
-                                        <div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>
-                                    `}
+    <div style="margin-top: 8px; padding: 8px; background: #f0fdf4; border-radius: 4px; font-size: 0.85rem;">
+        <i class="fas fa-check-circle" style="color: #10b981;"></i> 
+        <strong>${lastUpload.file_name}</strong> 
+        <span style="color: #64748b;">- diupload oleh ${lastUpload.guru_nama}</span>
+        <a href="${lastUpload.file_base64 || lastUpload.file_url}" download="${lastUpload.file_name}" 
+           target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600;">
+            <i class="fas fa-download"></i> Download
+        </a>
+        <a href="${lastUpload.file_base64 || lastUpload.file_url}" 
+           target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600;">
+            <i class="fas fa-eye"></i> Preview
+        </a>
+    </div>
+` : `
+    <div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>
+`}
                                 </div>
                                 <div style="flex-shrink: 0; margin-left: 12px;">
                                     ${userData ? (isAssigned ? 
@@ -350,24 +357,37 @@ window.openUploadModal = (indId, kode, pertanyaan, bukti) => {
 window.handleFileSelect = async (event) => {
     const file = event.target.files[0];
     if (!file || !userData) return;
-    if (file.size > 10 * 1024 * 1024) { alert("Maksimal 10MB!"); return; }
+    
+    // Batasi 2MB untuk Base64 (Firestore limit ~1MB per field, tapi aman di 2MB)
+    if (file.size > 2 * 1024 * 1024) { 
+        alert("⚠️ Ukuran file maksimal 2MB untuk metode ini!"); 
+        return; 
+    }
 
     const fileNameDisplay = document.getElementById('fileNameDisplay');
     if (fileNameDisplay) fileNameDisplay.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengupload...`;
     
     try {
-        const storageRef = storage.ref(`pkkm_uploads/${userData.uid}/${Date.now()}_${file.name}`);
-        const snapshot = await storageRef.put(file);
-        const downloadURL = await snapshot.ref.getDownloadURL();
+        // Konversi file ke Base64
+        const base64String = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
 
-        const existing = await db.collection('pkkm_uploads').where('indikator_id', '==', currentIndikatorId).where('guru_uid', '==', userData.uid).get();
+        const existing = await db.collection('pkkm_uploads')
+            .where('indikator_id', '==', currentIndikatorId)
+            .where('guru_uid', '==', userData.uid)
+            .get();
 
         const data = {
             indikator_id: currentIndikatorId,
             guru_uid: userData.uid,
             guru_nama: userData.nama,
             file_name: file.name,
-            file_url: downloadURL,
+            file_base64: base64String,  // Simpan sebagai Base64
+            file_size: (file.size / 1024).toFixed(1) + ' KB',
             updated_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
