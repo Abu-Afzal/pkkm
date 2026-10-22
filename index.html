@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PKKM Digital - MA Hasyim Asy'ari</title>
-    <link rel="icon" type="image/png" href="assets/logo-ma.png">
+    <link rel="icon" type="image/png" href="assets/images/logo-ma.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="pkkm.css">
     
@@ -12,6 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <!-- Storage tidak wajib jika hanya pakai Base64, tapi dibiarkan untuk jaga-jaga -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 </head>
 <body>
@@ -21,7 +22,7 @@
         <div class="header-content">
             <div class="brand">
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <img src="assets/logo-ma.png" alt="Logo MA Hasyim Asy'ari" class="logo-madrasah">
+                    <img src="assets/images/logo-ma.png" alt="Logo MA Hasyim Asy'ari" class="logo-madrasah">
                     <div>
                         <h1><i class="fas fa-award"></i> PKKM Digital</h1>
                         <p>MA Hasyim Asy'ari | Yayasan Al-Huffadh Butta Toa</p>
@@ -68,6 +69,29 @@
                 <div class="stat-box" style="border-left-color: #ef4444;"><div class="value" id="statBelum">0</div><div class="label">Belum Diupload</div></div>
             </div>
 
+            <!-- 🆕 FILTER PERIODE BARU -->
+            <div id="periodeFilter" style="display: flex; gap: 12px; margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex-wrap: wrap; align-items: center;">
+                <div style="color: white; font-weight: 700; font-size: 1rem; margin-right: 8px;">
+                    <i class="fas fa-calendar-alt"></i> Periode Aktif:
+                </div>
+                
+                <select id="filterTahun" onchange="gantiPeriode()" style="padding: 8px 12px; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; background: white; color: #0e7490;">
+                    <option value="2023/2024">2023/2024</option>
+                    <option value="2024/2025">2024/2025</option>
+                    <option value="2025/2026">2025/2026</option>
+                    <option value="2026/2027" selected>2026/2027</option>
+                </select>
+                
+                <select id="filterSemester" onchange="gantiPeriode()" style="padding: 8px 12px; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; background: white; color: #0e7490;">
+                    <option value="Ganjil" selected>Ganjil</option>
+                    <option value="Genap">Genap</option>
+                </select>
+                
+                <div id="periodeBadge" style="margin-left: auto; background: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                    📅 2026/2027 - Ganjil
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header">
                     <h2><i class="fas fa-tasks"></i> Progres & Tugas Bukti Fisik PKKM</h2>
@@ -90,19 +114,19 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <p style="color: #64748b; font-size: 0.9rem;">Klik tombol di atas untuk mengisi database dengan 5 Dimensi, 100+ Indikator, dan data guru sesuai pembagian tugas resmi.</p>
+                    <p style="color: #64748b; font-size: 0.9rem;">Klik tombol di atas untuk mengisi database dengan 5 Dimensi, 109 Indikator, dan data guru sesuai pembagian tugas resmi.</p>
                 </div>
             </div>
 
             <!-- User Management -->
             <div class="card">
-    <div class="card-header">
-        <h2><i class="fas fa-users-cog"></i> Kelola User (Guru/Staf)</h2>
-        <button onclick="exportUsersToExcel()" class="btn btn-success" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-            <i class="fas fa-file-excel"></i> Download Excel
-        </button>
-    </div>
-    <div class="card-body">
+                <div class="card-header">
+                    <h2><i class="fas fa-users-cog"></i> Kelola User (Guru/Staf)</h2>
+                    <button onclick="exportUsersToExcel()" class="btn btn-success" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-file-excel"></i> Download Excel
+                    </button>
+                </div>
+                <div class="card-body">
                     <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
                         <input type="text" id="newUserName" placeholder="Nama Lengkap (Contoh: Elis Harianto, S.Pd)" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                         <input type="email" id="newUserEmail" placeholder="Email (Contoh: elis@mahasyimasyari.sch.id)" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
@@ -127,7 +151,8 @@
                                 </tr>
                             </thead>
                             <tbody id="adminUsersTable">
-                                <tr><td colspan="4" style="padding: 12px; text-align: center;">Memuat data...</td></tr>
+                                <!-- ✅ Diperbaiki: colspan="5" sesuai jumlah kolom -->
+                                <tr><td colspan="5" style="padding: 12px; text-align: center; color: #64748b;">Memuat data...</td></tr>
                             </tbody>
                         </table>
                     </div>

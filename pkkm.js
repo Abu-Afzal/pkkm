@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════
-// PKKM DIGITAL - SINGLE LINK (HYBRID MODE)
+// PKKM DIGITAL - MULTI PERIODE (4 TAHUN)
 // ══════════════════════════════════════════════
 
 const firebaseConfig = {
@@ -14,18 +14,23 @@ const firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
-// const storage = firebase.storage(); // Dinonaktifkan karena hanya menggunakan Firestore
 
-let userData = null; // Null = Tamu
+let userData = null;
 let pkkmData = [];
 let allUsers = [];
 let currentIndikatorId = null;
+
+// 🆕 VARIABEL PERIODE AKTIF
+let currentPeriode = {
+    tahun: '2026/2027',
+    semester: 'Ganjil'
+};
 
 // ═════════════════════════════════════════════
 // 1. INIT & AUTH STATE
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-    loadPKKMData(); // Load data untuk semua orang
+    loadPKKMData();
     
     auth.onAuthStateChanged(user => {
         if (user) {
@@ -95,6 +100,51 @@ window.switchMainTab = function(tabName) {
     }
 };
 
+// ═════════════════════════════════════════════
+// 🆕 2.5. FUNGSI GANTI PERIODE
+// ═════════════════════════════════════════════
+window.gantiPeriode = function() {
+    const tahunSelect = document.getElementById('filterTahun');
+    const semesterSelect = document.getElementById('filterSemester');
+    const badge = document.getElementById('periodeBadge');
+    
+    if (tahunSelect && semesterSelect) {
+        currentPeriode.tahun = tahunSelect.value;
+        currentPeriode.semester = semesterSelect.value;
+        
+        if (badge) {
+            badge.innerHTML = `📅 ${currentPeriode.tahun} - ${currentPeriode.semester}`;
+        }
+        
+        // Simpan ke localStorage agar tetap saat refresh
+        localStorage.setItem('pkkm_periode', JSON.stringify(currentPeriode));
+        
+        // Reload data untuk periode baru
+        loadPKKMData();
+        
+        console.log(`🔄 Periode diganti ke: ${currentPeriode.tahun} - ${currentPeriode.semester}`);
+    }
+};
+
+// Load periode dari localStorage saat startup
+function loadSavedPeriode() {
+    const saved = localStorage.getItem('pkkm_periode');
+    if (saved) {
+        try {
+            currentPeriode = JSON.parse(saved);
+            const tahunSelect = document.getElementById('filterTahun');
+            const semesterSelect = document.getElementById('filterSemester');
+            const badge = document.getElementById('periodeBadge');
+            
+            if (tahunSelect) tahunSelect.value = currentPeriode.tahun;
+            if (semesterSelect) semesterSelect.value = currentPeriode.semester;
+            if (badge) badge.innerHTML = ` ${currentPeriode.tahun} - ${currentPeriode.semester}`;
+        } catch (e) {
+            console.error('Error loading saved periode:', e);
+        }
+    }
+}
+
 // ══════════════════════════════════════════════
 // 3. LOAD DATA & RENDER DASHBOARD
 // ══════════════════════════════════════════════
@@ -102,7 +152,12 @@ async function loadPKKMData() {
     try {
         const aspekSnapshot = await db.collection('pkkm_aspek').orderBy('kode').get();
         const indikatorSnapshot = await db.collection('pkkm_indikator').get();
-        const uploadsSnapshot = await db.collection('pkkm_uploads').get();
+        
+        // 🆕 FILTER UPLOAD BERDASARKAN PERIODE
+        const uploadsSnapshot = await db.collection('pkkm_uploads')
+            .where('tahun_ajaran', '==', currentPeriode.tahun)
+            .where('semester', '==', currentPeriode.semester)
+            .get();
 
         const uploadsMap = {};
         uploadsSnapshot.forEach(doc => {
@@ -215,9 +270,9 @@ function renderDashboard() {
                                                 <i class="fas fa-eye"></i> Preview
                                             </button>
                                         </a>
-    <button class="btn" style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="deleteUpload('${lastUpload.id}', '${ind.id}')">
-        <i class="fas fa-trash"></i> Hapus
-    </button>
+                                        <button class="btn" style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="deleteUpload('${lastUpload.id}', '${ind.id}')">
+                                            <i class="fas fa-trash"></i> Hapus
+                                        </button>
                                     ` : ''}
                                 </div>
                             </div>
@@ -231,7 +286,7 @@ function renderDashboard() {
 
 // ══════════════════════════════════════════════
 // 4. UI STATE (GUEST vs LOGIN)
-// ══════════════════════════════════════════════
+// ═════════════════════════════════════════════
 function updateUIForGuest() {
     const guestBadge = document.getElementById('guestBadge');
     const userInfo = document.getElementById('userInfo');
@@ -331,7 +386,7 @@ window.closeModal = () => {
 };
 
 // ══════════════════════════════════════════════
-// 6. UPLOAD LOGIC (BASE64 UNTUK FIRESTORE)
+// 6. UPLOAD LOGIC (BASE64 + PERIODE)
 // ═════════════════════════════════════════════
 window.openUploadModal = (indId, kode, pertanyaan, bukti) => {
     if (!userData) { alert('Silakan login terlebih dahulu!'); return; }
@@ -354,7 +409,6 @@ window.handleFileSelect = async (event) => {
     const file = event.target.files[0];
     if (!file || !userData) return;
     
-    // ✅ BATAS MAKSIMAL 500 KB agar aman di bawah batas 1MB Firestore
     const maxSize = 500 * 1024; 
     if (file.size > maxSize) { 
         alert(`⚠️ Ukuran file terlalu besar!\n\nMaksimal: 500 KB\nUkuran file Anda: ${(file.size / 1024).toFixed(1)} KB\n\nSilakan kompres file PDF/Gambar Anda terlebih dahulu.`); 
@@ -375,6 +429,8 @@ window.handleFileSelect = async (event) => {
         const existing = await db.collection('pkkm_uploads')
             .where('indikator_id', '==', currentIndikatorId)
             .where('guru_uid', '==', userData.uid)
+            .where('tahun_ajaran', '==', currentPeriode.tahun)
+            .where('semester', '==', currentPeriode.semester)
             .get();
 
         const data = {
@@ -385,6 +441,8 @@ window.handleFileSelect = async (event) => {
             file_base64: base64String,
             file_size: (file.size / 1024).toFixed(1) + ' KB',
             file_type: file.type,
+            tahun_ajaran: currentPeriode.tahun,  // 🆕
+            semester: currentPeriode.semester,    // 🆕
             updated_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -395,7 +453,7 @@ window.handleFileSelect = async (event) => {
             await db.collection('pkkm_uploads').add(data);
         }
 
-        alert("✅ Upload berhasil!");
+        alert(`✅ Upload berhasil untuk periode ${currentPeriode.tahun} - ${currentPeriode.semester}!`);
         closeModal();
         loadPKKMData();
     } catch (error) {
@@ -405,10 +463,9 @@ window.handleFileSelect = async (event) => {
     }
 };
 
-// Fungsi untuk menghapus upload
 window.deleteUpload = async function(uploadId, indikatorId) {
     if (!userData) {
-        alert(' Silakan login terlebih dahulu!');
+        alert('Silakan login terlebih dahulu!');
         return;
     }
     
@@ -418,9 +475,8 @@ window.deleteUpload = async function(uploadId, indikatorId) {
     
     try {
         await db.collection('pkkm_uploads').doc(uploadId).delete();
-        
         alert('✅ File berhasil dihapus!');
-        loadPKKMData(); // Reload data untuk update tampilan
+        loadPKKMData();
     } catch (error) {
         alert('❌ Gagal menghapus file: ' + error.message);
     }
@@ -435,7 +491,7 @@ function checkAdminAccess() {
         return false;
     }
     if (userData.role !== 'admin' && userData.role !== 'kepala') {
-        alert('⛔ Akses ditolak! Hanya Administrator atau Kepala Madrasah yang dapat mengakses fitur ini.');
+        alert(' Akses ditolak! Hanya Administrator atau Kepala Madrasah yang dapat mengakses fitur ini.');
         return false;
     }
     return true;
@@ -500,7 +556,7 @@ window.setPassword = async function(userId, email) {
         alert('❌ Password minimal 6 karakter!');
         return;
     }
-    if (!confirm(`⚠️ Set password "${newPassword}" untuk ${email}?\n\nCatatan: Password akan disimpan di database untuk ditampilkan di tabel.`)) {
+    if (!confirm(`⚠️ Set password "${newPassword}" untuk ${email}?`)) {
         return;
     }
     try {
@@ -651,10 +707,10 @@ window.setupDataPKKM = async function() {
         }
         
         const timA = ['Elis Harianto, S.Pd', 'Jamil Rahmat, S.Pd', 'Marhani, S.Pd', 'Ahmad Mudatsir, S.Pd'];
-        const timB = ['Irmayani, S.Pd', 'Wahda Nurismi, S.Pd', 'Risna Sari, S.Pd'];
+        const timB = ['Irmayani, S.Pd', 'Wahda Nursimi, S.Pd', 'Risnasari, S.Pd'];
         const timC = ['Niar, S.Pd', 'Muniratul Asri, S.Pd', 'Marwah, S.Pd.I'];
-        const timD = ['Nursyam, S.Pd', 'Atikah, S.Pd.I', 'Haerani, S.Pd.I'];
-        const timE = ['Sumarni, S.E.', 'Khaerul, S.Ag', 'Hj. Murniati Mahdi, S.Pd.I'];
+        const timD = ['Nursyam, S.Pd', 'Atika, S.Pd', 'Haerani, S.Pd.I'];
+        const timE = ['Sumarni, S.E.', 'Khaerul, S.Ag', 'Hj. Murniati Mahdi, S.Pd'];
         
         const indikatorList = [
             { aspek_id: 'aspek_A', kode: 'A.1.1.1', pertanyaan: 'Mampu mengembangkan struktur organisasi yang sesuai dengan kebutuhan program.', bukti_diharapkan: ['Bagan/struktur organisasi', 'Notulen rapat keputusan tentang penyusunan struktur organisasi', 'Dokumen sosialisasi', 'Daftar hadir'], penugasan: timA },
@@ -779,3 +835,6 @@ window.setupDataPKKM = async function() {
         alert('❌ Gagal: ' + error.message);
     }
 };
+
+// Panggil loadSavedPeriode saat halaman dimuat
+loadSavedPeriode();
