@@ -215,6 +215,9 @@ function renderDashboard() {
                                                 <i class="fas fa-eye"></i> Preview
                                             </button>
                                         </a>
+    <button class="btn" style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="deleteUpload('${lastUpload.id}', '${ind.id}')">
+        <i class="fas fa-trash"></i> Hapus
+    </button>
                                     ` : ''}
                                 </div>
                             </div>
@@ -399,6 +402,27 @@ window.handleFileSelect = async (event) => {
         console.error('Upload error:', error);
         alert("❌ Gagal upload: " + error.message);
         if (fileNameDisplay) fileNameDisplay.textContent = '';
+    }
+};
+
+// Fungsi untuk menghapus upload
+window.deleteUpload = async function(uploadId, indikatorId) {
+    if (!userData) {
+        alert(' Silakan login terlebih dahulu!');
+        return;
+    }
+    
+    if (!confirm('⚠️ Apakah Anda yakin ingin menghapus file ini?\n\nFile yang dihapus tidak dapat dikembalikan.')) {
+        return;
+    }
+    
+    try {
+        await db.collection('pkkm_uploads').doc(uploadId).delete();
+        
+        alert('✅ File berhasil dihapus!');
+        loadPKKMData(); // Reload data untuk update tampilan
+    } catch (error) {
+        alert('❌ Gagal menghapus file: ' + error.message);
     }
 };
 
