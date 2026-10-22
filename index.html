@@ -12,8 +12,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <!-- Storage tidak wajib jika hanya pakai Base64, tapi dibiarkan untuk jaga-jaga -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 </head>
 <body>
 
@@ -61,7 +59,7 @@
     <!-- Main Content -->
     <div class="container">
         
-        <!-- TAB 1: DASHBOARD (Untuk Semua Orang) -->
+        <!-- TAB 1: DASHBOARD -->
         <div id="tab-dashboard" class="tab-content active">
             <div class="stats-grid">
                 <div class="stat-box"><div class="value" id="statTotal">0</div><div class="label">Total Indikator</div></div>
@@ -69,26 +67,21 @@
                 <div class="stat-box" style="border-left-color: #ef4444;"><div class="value" id="statBelum">0</div><div class="label">Belum Diupload</div></div>
             </div>
 
-            <!-- 🆕 FILTER PERIODE BARU -->
+            <!-- FILTER TAHUN AJARAN -->
             <div id="periodeFilter" style="display: flex; gap: 12px; margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex-wrap: wrap; align-items: center;">
                 <div style="color: white; font-weight: 700; font-size: 1rem; margin-right: 8px;">
-                    <i class="fas fa-calendar-alt"></i> Periode Aktif:
+                    <i class="fas fa-calendar-alt"></i> Tahun Ajaran Aktif:
                 </div>
                 
-                <select id="filterTahun" onchange="gantiPeriode()" style="padding: 8px 12px; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; background: white; color: #0e7490;">
+                <select id="filterTahun" onchange="gantiPeriode()" style="padding: 8px 12px; border: none; border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer; background: white; color: #0e7490;">
                     <option value="2023/2024">2023/2024</option>
                     <option value="2024/2025">2024/2025</option>
                     <option value="2025/2026">2025/2026</option>
                     <option value="2026/2027" selected>2026/2027</option>
                 </select>
                 
-                <select id="filterSemester" onchange="gantiPeriode()" style="padding: 8px 12px; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; background: white; color: #0e7490;">
-                    <option value="Ganjil" selected>Ganjil</option>
-                    <option value="Genap">Genap</option>
-                </select>
-                
                 <div id="periodeBadge" style="margin-left: auto; background: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                    📅 2026/2027 - Ganjil
+                    📅 2026/2027
                 </div>
             </div>
 
@@ -103,9 +96,8 @@
             </div>
         </div>
 
-        <!-- TAB 2: ADMIN PANEL (Hanya Admin/Kepala) -->
+        <!-- TAB 2: ADMIN PANEL -->
         <div id="tab-admin" class="tab-content" style="display: none;">
-            <!-- Setup Data -->
             <div class="card">
                 <div class="card-header">
                     <h2><i class="fas fa-database"></i> Setup Database Awal</h2>
@@ -118,7 +110,6 @@
                 </div>
             </div>
 
-            <!-- User Management -->
             <div class="card">
                 <div class="card-header">
                     <h2><i class="fas fa-users-cog"></i> Kelola User (Guru/Staf)</h2>
@@ -128,8 +119,8 @@
                 </div>
                 <div class="card-body">
                     <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                        <input type="text" id="newUserName" placeholder="Nama Lengkap (Contoh: Elis Harianto, S.Pd)" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                        <input type="email" id="newUserEmail" placeholder="Email (Contoh: elis@mahasyimasyari.sch.id)" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <input type="text" id="newUserName" placeholder="Nama Lengkap" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <input type="email" id="newUserEmail" placeholder="Email" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                         <input type="password" id="newUserPassword" placeholder="Password (Min. 6 karakter)" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                         <select id="newUserRole" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                             <option value="guru">Guru</option>
@@ -151,7 +142,6 @@
                                 </tr>
                             </thead>
                             <tbody id="adminUsersTable">
-                                <!-- ✅ Diperbaiki: colspan="5" sesuai jumlah kolom -->
                                 <tr><td colspan="5" style="padding: 12px; text-align: center; color: #64748b;">Memuat data...</td></tr>
                             </tbody>
                         </table>
@@ -159,7 +149,6 @@
                 </div>
             </div>
 
-            <!-- Task Assignment -->
             <div class="card">
                 <div class="card-header">
                     <h2><i class="fas fa-clipboard-list"></i> Pembagian Tugas per Indikator</h2>
@@ -182,7 +171,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <!-- Modal Login -->
@@ -215,7 +203,7 @@
                 </div>
                 <div id="uploadArea">
                     <label class="file-drop-area" style="border: 2px dashed #cbd5e1; padding: 30px; text-align: center; border-radius: 8px; cursor: pointer;">
-                        <span class="file-drop-text"><i class="fas fa-cloud-upload-alt"></i> Klik untuk pilih file</span>
+                        <span class="file-drop-text"><i class="fas fa-cloud-upload-alt"></i> Klik untuk pilih file (Maks 500KB)</span>
                         <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="handleFileSelect(event)" style="display: none;">
                     </label>
                     <div id="fileNameDisplay" style="margin-top: 10px; font-weight: 600; color: #0e7490;"></div>

@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════
-// PKKM DIGITAL - MULTI PERIODE (4 TAHUN)
+// PKKM DIGITAL - MULTI TAHUN AJARAN (4 TAHUN)
 // ══════════════════════════════════════════════
 
 const firebaseConfig = {
@@ -20,16 +20,14 @@ let pkkmData = [];
 let allUsers = [];
 let currentIndikatorId = null;
 
-// 🆕 VARIABEL PERIODE AKTIF
-let currentPeriode = {
-    tahun: '2026/2027',
-    semester: 'Ganjil'
-};
+// 🆕 VARIABEL TAHUN AJARAN AKTIF (Default)
+let currentTahun = '2026/2027';
 
 // ═════════════════════════════════════════════
 // 1. INIT & AUTH STATE
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+    loadSavedPeriode(); // Load tahun ajaran tersimpan
     loadPKKMData();
     
     auth.onAuthStateChanged(user => {
@@ -37,31 +35,21 @@ document.addEventListener('DOMContentLoaded', () => {
             db.collection('users').where('email', '==', user.email).get().then(snapshot => {
                 let dbData = {};
                 let docId = null;
-                
                 if (!snapshot.empty) {
                     const doc = snapshot.docs[0];
                     dbData = doc.data();
                     docId = doc.id;
                 }
-                
                 userData = {
-                    uid: user.uid,
-                    email: user.email,
+                    uid: user.uid, email: user.email,
                     nama: dbData.nama || user.email.split('@')[0],
-                    role: dbData.role || 'guru',
-                    docId: docId
+                    role: dbData.role || 'guru', docId: docId
                 };
-                
-                console.log('✅ User ditemukan:', userData.nama, '| Role:', userData.role);
-                
                 updateUIForLoggedInUser();
                 renderDashboard();
-                
-                if (userData.role === 'admin' || userData.role === 'kepala') {
-                    loadAdminData();
-                }
+                if (userData.role === 'admin' || userData.role === 'kepala') loadAdminData();
             }).catch(err => {
-                console.error('Error fetching user:', err);
+                console.error('Error:', err);
                 userData = { uid: user.uid, email: user.email, nama: user.email.split('@')[0], role: 'guru' };
                 updateUIForLoggedInUser();
                 renderDashboard();
@@ -75,73 +63,36 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ═════════════════════════════════════════════
-// 2. TAB NAVIGATION
+// 2. TAB & PERIODE NAVIGATION
 // ═════════════════════════════════════════════
 window.switchMainTab = function(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.style.display = 'none';
-        tab.classList.remove('active');
-    });
-    
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
+    document.querySelectorAll('.tab-content').forEach(tab => { tab.style.display = 'none'; tab.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     const selectedTab = document.getElementById(`tab-${tabName}`);
     const selectedBtn = document.getElementById(`tabBtn${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
-    
-    if (selectedTab) {
-        selectedTab.style.display = 'block';
-        selectedTab.classList.add('active');
-    }
-    
-    if (selectedBtn) {
-        selectedBtn.classList.add('active');
-    }
+    if (selectedTab) { selectedTab.style.display = 'block'; selectedTab.classList.add('active'); }
+    if (selectedBtn) selectedBtn.classList.add('active');
 };
 
-// ═════════════════════════════════════════════
-// 🆕 2.5. FUNGSI GANTI PERIODE
-// ═════════════════════════════════════════════
 window.gantiPeriode = function() {
     const tahunSelect = document.getElementById('filterTahun');
-    const semesterSelect = document.getElementById('filterSemester');
     const badge = document.getElementById('periodeBadge');
-    
-    if (tahunSelect && semesterSelect) {
-        currentPeriode.tahun = tahunSelect.value;
-        currentPeriode.semester = semesterSelect.value;
-        
-        if (badge) {
-            badge.innerHTML = `📅 ${currentPeriode.tahun} - ${currentPeriode.semester}`;
-        }
-        
-        // Simpan ke localStorage agar tetap saat refresh
-        localStorage.setItem('pkkm_periode', JSON.stringify(currentPeriode));
-        
-        // Reload data untuk periode baru
+    if (tahunSelect) {
+        currentTahun = tahunSelect.value;
+        if (badge) badge.innerHTML = `📅 ${currentTahun}`;
+        localStorage.setItem('pkkm_tahun', currentTahun);
         loadPKKMData();
-        
-        console.log(`🔄 Periode diganti ke: ${currentPeriode.tahun} - ${currentPeriode.semester}`);
     }
 };
 
-// Load periode dari localStorage saat startup
 function loadSavedPeriode() {
-    const saved = localStorage.getItem('pkkm_periode');
+    const saved = localStorage.getItem('pkkm_tahun');
     if (saved) {
-        try {
-            currentPeriode = JSON.parse(saved);
-            const tahunSelect = document.getElementById('filterTahun');
-            const semesterSelect = document.getElementById('filterSemester');
-            const badge = document.getElementById('periodeBadge');
-            
-            if (tahunSelect) tahunSelect.value = currentPeriode.tahun;
-            if (semesterSelect) semesterSelect.value = currentPeriode.semester;
-            if (badge) badge.innerHTML = ` ${currentPeriode.tahun} - ${currentPeriode.semester}`;
-        } catch (e) {
-            console.error('Error loading saved periode:', e);
-        }
+        currentTahun = saved;
+        const tahunSelect = document.getElementById('filterTahun');
+        const badge = document.getElementById('periodeBadge');
+        if (tahunSelect) tahunSelect.value = currentTahun;
+        if (badge) badge.innerHTML = `📅 ${currentTahun}`;
     }
 }
 
@@ -153,10 +104,9 @@ async function loadPKKMData() {
         const aspekSnapshot = await db.collection('pkkm_aspek').orderBy('kode').get();
         const indikatorSnapshot = await db.collection('pkkm_indikator').get();
         
-        // 🆕 FILTER UPLOAD BERDASARKAN PERIODE
+        // 🆕 HANYA FILTER BERDASARKAN TAHUN AJARAN
         const uploadsSnapshot = await db.collection('pkkm_uploads')
-            .where('tahun_ajaran', '==', currentPeriode.tahun)
-            .where('semester', '==', currentPeriode.semester)
+            .where('tahun_ajaran', '==', currentTahun)
             .get();
 
         const uploadsMap = {};
@@ -186,7 +136,6 @@ async function loadPKKMData() {
         const statTotalEl = document.getElementById('statTotal');
         const statSelesaiEl = document.getElementById('statSelesai');
         const statBelumEl = document.getElementById('statBelum');
-        
         if (statTotalEl) statTotalEl.textContent = total;
         if (statSelesaiEl) statSelesaiEl.textContent = selesai;
         if (statBelumEl) statBelumEl.textContent = total - selesai;
@@ -203,7 +152,6 @@ async function loadPKKMData() {
 function renderDashboard() {
     const container = document.getElementById('aspekContainer');
     if (!container) return;
-    
     if (pkkmData.length === 0) {
         container.innerHTML = '<div style="text-align: center; padding: 40px; color: #64748b;"><p>Belum ada data. Login sebagai admin dan jalankan "Setup Data Awal".</p></div>';
         return;
@@ -227,7 +175,6 @@ function renderDashboard() {
                     ${aspek.indikator.map(ind => {
                         const hasUpload = ind.uploads.length > 0;
                         const lastUpload = hasUpload ? ind.uploads[ind.uploads.length - 1] : null;
-                        
                         const isAssigned = userData && ind.penugasan && ind.penugasan.some(p => p.toLowerCase().includes(userData.nama.toLowerCase().split(',')[0]));
                         const isMyUpload = lastUpload && lastUpload.guru_uid === userData?.uid;
 
@@ -235,188 +182,95 @@ function renderDashboard() {
                             <div class="indikator-item" style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
                                 <div style="flex: 1; min-width: 0;">
                                     <div style="font-weight: 600; font-size: 0.95rem; color: #0f172a;">${ind.kode} - ${ind.pertanyaan}</div>
-                                    <div style="font-size: 0.8rem; color: #64748b; margin: 4px 0;">
-                                        <strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}
-                                    </div>
+                                    <div style="font-size: 0.8rem; color: #64748b; margin: 4px 0;"><strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}</div>
                                     ${hasUpload ? `
                                         <div style="margin-top: 8px; padding: 8px; background: #f0fdf4; border-radius: 4px; font-size: 0.85rem;">
-                                            <i class="fas fa-check-circle" style="color: #10b981;"></i> 
-                                            <strong>${lastUpload.file_name}</strong> 
-                                            <span style="color: #64748b;">- diupload oleh ${lastUpload.guru_nama}</span>
-                                        </div>
-                                    ` : `
-                                        <div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>
-                                    `}
+                                            <i class="fas fa-check-circle" style="color: #10b981;"></i> <strong>${lastUpload.file_name}</strong> <span style="color: #64748b;">- diupload oleh ${lastUpload.guru_nama}</span>
+                                        </div>` : `<div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>`}
                                 </div>
                                 <div style="flex-shrink: 0; margin-left: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-                                    ${hasUpload ? `
-                                        <a href="${lastUpload.file_base64 || lastUpload.file_url}" download="${lastUpload.file_name}" target="_blank" style="text-decoration: none; width: 100px;">
-                                            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
-                                                <i class="fas fa-download"></i> Download
-                                            </button>
-                                        </a>
-                                    ` : ''}
-                                    ${userData ? (isAssigned ? 
-                                        `<button class="btn" style="background: #0891b2; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="openUploadModal('${ind.id}', '${ind.kode}', '${ind.pertanyaan.replace(/'/g, "\\'")}', '${ind.bukti_diharapkan.join(', ').replace(/'/g, "\\'")}')">
-                                            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
-                                        </button>` : 
-                                        `<button class="btn" disabled style="background: #e2e8f0; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-lock"></i> Bukan Tugas Anda</button>`
-                                    ) : `
-                                        <button class="btn" disabled style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-eye"></i> View Only</button>
-                                    `}
-                                    ${hasUpload ? `
-                                        <a href="${lastUpload.file_base64 || lastUpload.file_url}" target="_blank" style="text-decoration: none; width: 100px;">
-                                            <button class="btn" style="background: #6366f1; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
-                                                <i class="fas fa-eye"></i> Preview
-                                            </button>
-                                        </a>
-                                        <button class="btn" style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="deleteUpload('${lastUpload.id}', '${ind.id}')">
-                                            <i class="fas fa-trash"></i> Hapus
-                                        </button>
-                                    ` : ''}
+                                    ${hasUpload ? `<a href="${lastUpload.file_base64 || lastUpload.file_url}" download="${lastUpload.file_name}" target="_blank" style="text-decoration: none; width: 100px;"><button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;"><i class="fas fa-download"></i> Download</button></a>` : ''}
+                                    ${userData ? (isAssigned ? `<button class="btn" style="background: #0891b2; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="openUploadModal('${ind.id}', '${ind.kode}', '${ind.pertanyaan.replace(/'/g, "\\'")}', '${ind.bukti_diharapkan.join(', ').replace(/'/g, "\\'")}')"><i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}</button>` : `<button class="btn" disabled style="background: #e2e8f0; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-lock"></i> Bukan Tugas Anda</button>`) : `<button class="btn" disabled style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-eye"></i> View Only</button>`}
+                                    ${hasUpload ? `<a href="${lastUpload.file_base64 || lastUpload.file_url}" target="_blank" style="text-decoration: none; width: 100px;"><button class="btn" style="background: #6366f1; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;"><i class="fas fa-eye"></i> Preview</button></a><button class="btn" style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="deleteUpload('${lastUpload.id}', '${ind.id}')"><i class="fas fa-trash"></i> Hapus</button>` : ''}
                                 </div>
-                            </div>
-                        `;
+                            </div>`;
                     }).join('')}
                 </div>
-            </div>
-        `;
+            </div>`;
     }).join('');
 }
 
 // ══════════════════════════════════════════════
-// 4. UI STATE (GUEST vs LOGIN)
-// ═════════════════════════════════════════════
+// 4. UI STATE
+// ══════════════════════════════════════════════
 function updateUIForGuest() {
-    const guestBadge = document.getElementById('guestBadge');
-    const userInfo = document.getElementById('userInfo');
-    const btnLogin = document.getElementById('btnLogin');
-    const btnLogout = document.getElementById('btnLogout');
-    
-    if (guestBadge) guestBadge.style.display = 'block';
-    if (userInfo) userInfo.style.display = 'none';
-    if (btnLogin) btnLogin.style.display = 'inline-block';
-    if (btnLogout) btnLogout.style.display = 'none';
-    
-    const navTabs = document.getElementById('mainNavTabs');
-    if (navTabs) navTabs.style.display = 'none';
-    
-    const tabBtnAdmin = document.getElementById('tabBtnAdmin');
-    if (tabBtnAdmin) tabBtnAdmin.style.display = 'none';
-    
-    const tabAdmin = document.getElementById('tab-admin');
-    if (tabAdmin) {
-        tabAdmin.style.display = 'none';
-        tabAdmin.classList.remove('active');
-    }
-    
-    const tabDashboard = document.getElementById('tab-dashboard');
-    if (tabDashboard) {
-        tabDashboard.style.display = 'block';
-        tabDashboard.classList.add('active');
-    }
+    document.getElementById('guestBadge').style.display = 'block';
+    document.getElementById('userInfo').style.display = 'none';
+    document.getElementById('btnLogin').style.display = 'inline-block';
+    document.getElementById('btnLogout').style.display = 'none';
+    document.getElementById('mainNavTabs').style.display = 'none';
+    document.getElementById('tabBtnAdmin').style.display = 'none';
+    document.getElementById('tab-admin').style.display = 'none';
+    document.getElementById('tab-dashboard').style.display = 'block';
 }
 
 function updateUIForLoggedInUser() {
-    const guestBadge = document.getElementById('guestBadge');
-    const userInfo = document.getElementById('userInfo');
-    const userName = document.getElementById('userName');
-    const userRole = document.getElementById('userRole');
-    const btnLogin = document.getElementById('btnLogin');
-    const btnLogout = document.getElementById('btnLogout');
-    
-    if (guestBadge) guestBadge.style.display = 'none';
-    if (userInfo) userInfo.style.display = 'block';
-    if (userName) userName.textContent = userData.nama;
-    if (userRole) userRole.textContent = userData.role.toUpperCase();
-    if (btnLogin) btnLogin.style.display = 'none';
-    if (btnLogout) btnLogout.style.display = 'inline-block';
-    
-    const navTabs = document.getElementById('mainNavTabs');
-    if (navTabs) navTabs.style.display = 'flex';
-    
-    const tabBtnAdmin = document.getElementById('tabBtnAdmin');
-    if (tabBtnAdmin) {
-        if (userData.role === 'admin' || userData.role === 'kepala') {
-            tabBtnAdmin.style.display = 'inline-block';
-        } else {
-            tabBtnAdmin.style.display = 'none';
-        }
-    }
-    
+    document.getElementById('guestBadge').style.display = 'none';
+    document.getElementById('userInfo').style.display = 'block';
+    document.getElementById('userName').textContent = userData.nama;
+    document.getElementById('userRole').textContent = userData.role.toUpperCase();
+    document.getElementById('btnLogin').style.display = 'none';
+    document.getElementById('btnLogout').style.display = 'inline-block';
+    document.getElementById('mainNavTabs').style.display = 'flex';
+    document.getElementById('tabBtnAdmin').style.display = (userData.role === 'admin' || userData.role === 'kepala') ? 'inline-block' : 'none';
     switchMainTab('dashboard');
 }
 
 // ══════════════════════════════════════════════
 // 5. LOGIN / LOGOUT
 // ══════════════════════════════════════════════
-window.openLoginModal = () => {
-    const modal = document.getElementById('loginModal');
-    if (modal) modal.classList.add('active');
-};
-
+window.openLoginModal = () => document.getElementById('loginModal').classList.add('active');
 window.closeLoginModal = () => {
-    const modal = document.getElementById('loginModal');
-    const errorDiv = document.getElementById('loginError');
-    if (modal) modal.classList.remove('active');
-    if (errorDiv) errorDiv.style.display = 'none';
+    document.getElementById('loginModal').classList.remove('active');
+    document.getElementById('loginError').style.display = 'none';
 };
-
 window.doLogin = async () => {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
-    const errorDiv = document.getElementById('loginError');
-    
     try {
         await auth.signInWithEmailAndPassword(email, password);
         closeLoginModal();
     } catch (error) {
-        if (errorDiv) {
-            errorDiv.textContent = '❌ ' + error.message;
-            errorDiv.style.display = 'block';
-        }
+        document.getElementById('loginError').textContent = '❌ ' + error.message;
+        document.getElementById('loginError').style.display = 'block';
     }
 };
-
 window.logout = () => auth.signOut();
-
-window.closeModal = () => {
-    const modal = document.getElementById('uploadModal');
-    if (modal) modal.classList.remove('active');
-};
+window.closeModal = () => document.getElementById('uploadModal').classList.remove('active');
 
 // ══════════════════════════════════════════════
-// 6. UPLOAD LOGIC (BASE64 + PERIODE)
+// 6. UPLOAD LOGIC (BASE64 + TAHUN AJARAN)
 // ═════════════════════════════════════════════
 window.openUploadModal = (indId, kode, pertanyaan, bukti) => {
     if (!userData) { alert('Silakan login terlebih dahulu!'); return; }
     currentIndikatorId = indId;
-    
-    const titleEl = document.getElementById('modalIndikatorTitle');
-    const buktiEl = document.getElementById('modalBuktiTitle');
-    const fileNameEl = document.getElementById('fileNameDisplay');
-    const fileInput = document.getElementById('fileInput');
-    const modal = document.getElementById('uploadModal');
-    
-    if (titleEl) titleEl.textContent = `${kode} - ${pertanyaan}`;
-    if (buktiEl) buktiEl.textContent = `Bukti: ${bukti}`;
-    if (fileNameEl) fileNameEl.textContent = '';
-    if (fileInput) fileInput.value = '';
-    if (modal) modal.classList.add('active');
+    document.getElementById('modalIndikatorTitle').textContent = `${kode} - ${pertanyaan}`;
+    document.getElementById('modalBuktiTitle').textContent = `Bukti: ${bukti}`;
+    document.getElementById('fileNameDisplay').textContent = '';
+    document.getElementById('fileInput').value = '';
+    document.getElementById('uploadModal').classList.add('active');
 };
 
 window.handleFileSelect = async (event) => {
     const file = event.target.files[0];
     if (!file || !userData) return;
     
-    const maxSize = 500 * 1024; 
-    if (file.size > maxSize) { 
-        alert(`⚠️ Ukuran file terlalu besar!\n\nMaksimal: 500 KB\nUkuran file Anda: ${(file.size / 1024).toFixed(1)} KB\n\nSilakan kompres file PDF/Gambar Anda terlebih dahulu.`); 
+    if (file.size > 500 * 1024) { 
+        alert(`⚠️ Ukuran file terlalu besar! Maksimal: 500 KB.\nUkuran file Anda: ${(file.size / 1024).toFixed(1)} KB.\nSilakan kompres file terlebih dahulu.`); 
         return; 
     }
 
-    const fileNameDisplay = document.getElementById('fileNameDisplay');
-    if (fileNameDisplay) fileNameDisplay.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengupload...`;
+    document.getElementById('fileNameDisplay').innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengupload...`;
     
     try {
         const base64String = await new Promise((resolve, reject) => {
@@ -429,8 +283,7 @@ window.handleFileSelect = async (event) => {
         const existing = await db.collection('pkkm_uploads')
             .where('indikator_id', '==', currentIndikatorId)
             .where('guru_uid', '==', userData.uid)
-            .where('tahun_ajaran', '==', currentPeriode.tahun)
-            .where('semester', '==', currentPeriode.semester)
+            .where('tahun_ajaran', '==', currentTahun)
             .get();
 
         const data = {
@@ -441,8 +294,7 @@ window.handleFileSelect = async (event) => {
             file_base64: base64String,
             file_size: (file.size / 1024).toFixed(1) + ' KB',
             file_type: file.type,
-            tahun_ajaran: currentPeriode.tahun,  // 🆕
-            semester: currentPeriode.semester,    // 🆕
+            tahun_ajaran: currentTahun, // 🆕 HANYA SIMPAN TAHUN AJARAN
             updated_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -453,32 +305,24 @@ window.handleFileSelect = async (event) => {
             await db.collection('pkkm_uploads').add(data);
         }
 
-        alert(`✅ Upload berhasil untuk periode ${currentPeriode.tahun} - ${currentPeriode.semester}!`);
+        alert(`✅ Upload berhasil untuk Tahun Ajaran ${currentTahun}!`);
         closeModal();
         loadPKKMData();
     } catch (error) {
-        console.error('Upload error:', error);
         alert("❌ Gagal upload: " + error.message);
-        if (fileNameDisplay) fileNameDisplay.textContent = '';
+        document.getElementById('fileNameDisplay').textContent = '';
     }
 };
 
-window.deleteUpload = async function(uploadId, indikatorId) {
-    if (!userData) {
-        alert('Silakan login terlebih dahulu!');
-        return;
-    }
-    
-    if (!confirm('⚠️ Apakah Anda yakin ingin menghapus file ini?\n\nFile yang dihapus tidak dapat dikembalikan.')) {
-        return;
-    }
-    
+window.deleteUpload = async function(uploadId) {
+    if (!userData) return;
+    if (!confirm('⚠️ Yakin ingin menghapus file ini?')) return;
     try {
         await db.collection('pkkm_uploads').doc(uploadId).delete();
         alert('✅ File berhasil dihapus!');
         loadPKKMData();
     } catch (error) {
-        alert('❌ Gagal menghapus file: ' + error.message);
+        alert('❌ Gagal: ' + error.message);
     }
 };
 
@@ -486,225 +330,122 @@ window.deleteUpload = async function(uploadId, indikatorId) {
 // 7. ADMIN FUNCTIONS
 // ══════════════════════════════════════════════
 function checkAdminAccess() {
-    if (!userData) {
-        alert('⛔ Akses ditolak! Silakan login terlebih dahulu.');
-        return false;
-    }
-    if (userData.role !== 'admin' && userData.role !== 'kepala') {
-        alert(' Akses ditolak! Hanya Administrator atau Kepala Madrasah yang dapat mengakses fitur ini.');
+    if (!userData || (userData.role !== 'admin' && userData.role !== 'kepala')) {
+        alert('⛔ Akses ditolak! Hanya Admin/Kepala Madrasah.');
         return false;
     }
     return true;
 }
 
 async function loadAdminData() {
-    try {
-        const usersSnapshot = await db.collection('users').get();
-        allUsers = [];
-        usersSnapshot.forEach(doc => allUsers.push({ id: doc.id, ...doc.data() }));
-        allUsers.sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
-        
-        renderAdminUsersTable();
-        renderAdminAssignments();
-    } catch (error) {
-        console.error("Error loading admin data:", error);
-    }
+    const usersSnapshot = await db.collection('users').get();
+    allUsers = [];
+    usersSnapshot.forEach(doc => allUsers.push({ id: doc.id, ...doc.data() }));
+    allUsers.sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+    renderAdminUsersTable();
+    renderAdminAssignments();
 }
 
 function renderAdminUsersTable() {
     const tbody = document.getElementById('adminUsersTable');
     if (!tbody) return;
-    
     if (allUsers.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #64748b;">Belum ada user</td></tr>';
         return;
     }
-    
     tbody.innerHTML = allUsers.map(user => `
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${user.nama || '-'}</td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${user.email || '-'}</td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
-                ${user.password ? 
-                    `<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; font-family: monospace;">${user.password}</span>` : 
-                    `<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">Belum diset</span>`
-                }
+                ${user.password ? `<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; font-family: monospace;">${user.password}</span>` : `<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">Belum diset</span>`}
             </td>
-            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
-                <span style="background: ${user.role === 'admin' ? '#ef4444' : user.role === 'kepala' ? '#0891b2' : '#10b981'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">
-                    ${(user.role || 'guru').toUpperCase()}
-                </span>
-            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><span style="background: ${user.role === 'admin' ? '#ef4444' : user.role === 'kepala' ? '#0891b2' : '#10b981'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">${(user.role || 'guru').toUpperCase()}</span></td>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; gap: 4px;">
-                ${!user.password ? `
-                    <button onclick="setPassword('${user.uid}', '${user.email}')" class="btn btn-warning" style="background: #f59e0b; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;" title="Set Password">
-                        <i class="fas fa-key"></i>
-                    </button>
-                ` : ''}
-                <button onclick="deleteUser('${user.uid}')" class="btn btn-danger" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-                    <i class="fas fa-trash"></i>
-                </button>
+                ${!user.password ? `<button onclick="setPassword('${user.uid}', '${user.email}')" class="btn btn-warning" style="background: #f59e0b; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"><i class="fas fa-key"></i></button>` : ''}
+                <button onclick="deleteUser('${user.uid}')" class="btn btn-danger" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;"><i class="fas fa-trash"></i></button>
             </td>
-        </tr>
-    `).join('');
+        </tr>`).join('');
 }
 
 window.setPassword = async function(userId, email) {
-    const newPassword = prompt(`Masukkan password baru untuk ${email}:\n(Minimal 6 karakter)`);
-    if (!newPassword) return;
-    if (newPassword.length < 6) {
-        alert('❌ Password minimal 6 karakter!');
-        return;
-    }
-    if (!confirm(`⚠️ Set password "${newPassword}" untuk ${email}?`)) {
-        return;
-    }
+    const newPassword = prompt(`Password baru untuk ${email} (Min. 6 karakter):`);
+    if (!newPassword || newPassword.length < 6) { alert('❌ Minimal 6 karakter!'); return; }
+    if (!confirm(`Set password "${newPassword}" untuk ${email}?`)) return;
     try {
         await db.collection('users').doc(userId).update({ password: newPassword });
-        alert(`✅ Password untuk ${email} berhasil diset!\n\nPassword: ${newPassword}`);
+        alert(`✅ Password berhasil diset: ${newPassword}`);
         loadAdminData();
-    } catch (error) {
-        alert('❌ Gagal: ' + error.message);
-    }
+    } catch (error) { alert('❌ Gagal: ' + error.message); }
 };
 
 window.exportUsersToExcel = function() {
-    if (allUsers.length === 0) {
-        alert('Tidak ada data user untuk diekspor!');
-        return;
-    }
-    
-    let htmlContent = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-        <head><meta charset="UTF-8">
-        <style>
-            table { border-collapse: collapse; width: 100%; }
-            th { background-color: #0891b2; color: white; font-weight: bold; padding: 12px; border: 1px solid #ddd; text-align: left; }
-            td { padding: 10px; border: 1px solid #ddd; }
-            tr:nth-child(even) { background-color: #f9fafb; }
-            .role-admin { background-color: #fee2e2; color: #dc2626; font-weight: bold; padding: 4px 8px; border-radius: 4px; text-align: center; }
-            .role-guru { background-color: #d1fae5; color: #059669; font-weight: bold; padding: 4px 8px; border-radius: 4px; text-align: center; }
-            .password { background-color: #fef3c7; color: #d97706; font-weight: bold; padding: 4px 8px; border-radius: 4px; text-align: center; font-family: monospace; }
-        </style></head><body><table>
-            <thead><tr><th>No</th><th>Nama Lengkap</th><th>Email</th><th>Password</th><th>Role</th></tr></thead><tbody>
-    `;
-    
-    allUsers.forEach((user, index) => {
-        const roleClass = user.role === 'admin' ? 'role-admin' : 'role-guru';
-        htmlContent += `<tr>
-            <td>${index + 1}</td>
-            <td>${user.nama || ''}</td>
-            <td>${user.email || ''}</td>
-            <td class="password">${user.password || ''}</td>
-            <td class="${roleClass}">${(user.role || 'guru').toUpperCase()}</td>
-        </tr>`;
+    if (allUsers.length === 0) return alert('Tidak ada data!');
+    let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>table{border-collapse:collapse;width:100%}th{background:#0891b2;color:#fff;padding:12px;border:1px solid #ddd;text-align:left}td{padding:10px;border:1px solid #ddd}tr:nth-child(even){background:#f9fafb}.pwd{background:#fef3c7;color:#d97706;font-weight:bold;padding:4px 8px;border-radius:4px;text-align:center;font-family:monospace}.role{font-weight:bold;padding:4px 8px;border-radius:4px;text-align:center}</style></head><body><table><thead><tr><th>No</th><th>Nama</th><th>Email</th><th>Password</th><th>Role</th></tr></thead><tbody>`;
+    allUsers.forEach((u, i) => {
+        html += `<tr><td>${i+1}</td><td>${u.nama||''}</td><td>${u.email||''}</td><td class="pwd">${u.password||''}</td><td class="role" style="background:${u.role==='admin'?'#fee2e2;color:#dc2626':'#d1fae5;color:#059669'}">${(u.role||'guru').toUpperCase()}</td></tr>`;
     });
-    
-    htmlContent += `</tbody></table></body></html>`;
-    
-    const blob = new Blob(['\ufeff', htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    html += `</tbody></table></body></html>`;
+    const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Daftar_User_PKKM_${new Date().toISOString().split('T')[0]}.xls`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-    alert(`✅ Berhasil mengunduh ${allUsers.length} user! File siap untuk dicetak ke PDF.`);
+    const link = document.createElement('a'); link.href = url; link.download = `User_PKKM_${new Date().toISOString().split('T')[0]}.xls`;
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    alert(`✅ Berhasil mengunduh ${allUsers.length} user!`);
 };
 
 window.deleteUser = async function(userId) {
-    if (!checkAdminAccess()) return;
-    if (!confirm('⚠️ Yakin ingin menghapus user ini dari database?')) return;
-    try {
-        await db.collection('users').doc(userId).delete();
-        alert('✅ User dihapus dari database.');
-        loadAdminData();
-    } catch (error) {
-        alert('❌ Gagal: ' + error.message);
-    }
+    if (!checkAdminAccess() || !confirm('Yakin hapus user ini?')) return;
+    try { await db.collection('users').doc(userId).delete(); alert('✅ User dihapus.'); loadAdminData(); } 
+    catch (error) { alert('❌ Gagal: ' + error.message); }
 };
 
 function renderAdminAssignments() {
     const filter = document.getElementById('filterDimensi').value;
     const container = document.getElementById('adminAssignmentList');
     if (!container) return;
-    
-    let filteredIndicators = [];
-    pkkmData.forEach(aspek => {
-        if (filter === 'all' || aspek.kode === filter) {
-            filteredIndicators.push(...aspek.indikator);
-        }
-    });
-    
-    if (filteredIndicators.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 40px;">Belum ada data. Klik "Jalankan Setup Data" terlebih dahulu.</p>';
-        return;
-    }
-    
-    container.innerHTML = filteredIndicators.map(ind => `
-        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; background: white;">
-            <div style="font-weight: 700; color: #0e7490; margin-bottom: 8px;">${ind.kode} - ${ind.pertanyaan}</div>
-            <div style="margin-bottom: 12px;">
-                <strong style="font-size: 0.9rem;">Pilih Penanggung Jawab:</strong>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 8px;">
+    let filtered = [];
+    pkkmData.forEach(aspek => { if (filter === 'all' || aspek.kode === filter) filtered.push(...aspek.indikator); });
+    if (filtered.length === 0) { container.innerHTML = '<p style="text-align:center;padding:40px;color:#64748b;">Belum ada data.</p>'; return; }
+    container.innerHTML = filtered.map(ind => `
+        <div style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:12px;background:white;">
+            <div style="font-weight:700;color:#0e7490;margin-bottom:8px;">${ind.kode} - ${ind.pertanyaan}</div>
+            <div style="margin-bottom:12px;"><strong style="font-size:0.9rem;">Pilih Penanggung Jawab:</strong>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px;">
                     ${allUsers.filter(u => u.role !== 'admin').map(user => `
-                        <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f8fafc; border-radius: 4px; cursor: pointer;">
+                        <label style="display:flex;align-items:center;gap:8px;padding:8px;background:#f8fafc;border-radius:4px;cursor:pointer;">
                             <input type="checkbox" value="${user.nama}" ${ind.penugasan && ind.penugasan.includes(user.nama) ? 'checked' : ''}>
-                            <span style="font-size: 0.9rem;">${user.nama}</span>
-                        </label>
-                    `).join('')}
+                            <span style="font-size:0.9rem;">${user.nama}</span>
+                        </label>`).join('')}
                 </div>
             </div>
-            <button onclick="saveAssignment('${ind.id}', this)" class="btn btn-primary" style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;"><i class="fas fa-save"></i> Simpan Penugasan</button>
-        </div>
-    `).join('');
+            <button onclick="saveAssignment('${ind.id}', this)" class="btn btn-primary" style="background:#10b981;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:0.85rem;"><i class="fas fa-save"></i> Simpan Penugasan</button>
+        </div>`).join('');
 }
 
 window.saveAssignment = async function(indikatorId, btn) {
     if (!checkAdminAccess()) return;
-    const container = btn.closest('div');
-    const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+    const checkboxes = btn.closest('div').querySelectorAll('input[type="checkbox"]:checked');
     const penugasan = Array.from(checkboxes).map(cb => cb.value);
-    
-    btn.disabled = true; 
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
     try {
-        await db.collection('pkkm_indikator').doc(indikatorId).update({
-            penugasan: penugasan,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        alert('✅ Penugasan berhasil disimpan!');
-        loadPKKMData();
-    } catch (error) {
-        alert('❌ Gagal: ' + error.message);
-    } finally {
-        btn.disabled = false; 
-        btn.innerHTML = '<i class="fas fa-save"></i> Simpan Penugasan';
-    }
+        await db.collection('pkkm_indikator').doc(indikatorId).update({ penugasan: penugasan, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        alert('✅ Penugasan disimpan!'); loadPKKMData();
+    } catch (error) { alert('❌ Gagal: ' + error.message); } 
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Simpan Penugasan'; }
 };
 
 // ══════════════════════════════════════════════
 // 8. SETUP DATA AWAL (ADMIN ONLY)
 // ══════════════════════════════════════════════
 window.setupDataPKKM = async function() {
-    if (!checkAdminAccess()) return;
-    if (!confirm('⚠️ Ini akan mengisi database dengan SEMUA indikator PKKM lengkap. Lanjutkan?')) return;
-    
+    if (!checkAdminAccess() || !confirm('⚠️ Isi database dengan 109 indikator PKKM lengkap?')) return;
     try {
         const aspekList = [
-            { kode: 'A', nama: 'Usaha Pengembangan Madrasah' },
-            { kode: 'B', nama: 'Pelaksanaan Tugas Manajerial' },
-            { kode: 'C', nama: 'Pengembangan Kewirausahaan' },
-            { kode: 'D', nama: 'Supervisi Kepada Guru dan Tenaga Kependidikan' },
+            { kode: 'A', nama: 'Usaha Pengembangan Madrasah' }, { kode: 'B', nama: 'Pelaksanaan Tugas Manajerial' },
+            { kode: 'C', nama: 'Pengembangan Kewirausahaan' }, { kode: 'D', nama: 'Supervisi Kepada Guru dan Tenaga Kependidikan' },
             { kode: 'E', nama: 'Hasil Kinerja Kepala Madrasah' }
         ];
-        
-        for (const asp of aspekList) {
-            await db.collection('pkkm_aspek').doc(`aspek_${asp.kode}`).set(asp);
-        }
+        for (const asp of aspekList) await db.collection('pkkm_aspek').doc(`aspek_${asp.kode}`).set(asp);
         
         const timA = ['Elis Harianto, S.Pd', 'Jamil Rahmat, S.Pd', 'Marhani, S.Pd', 'Ahmad Mudatsir, S.Pd'];
         const timB = ['Irmayani, S.Pd', 'Wahda Nursimi, S.Pd', 'Risnasari, S.Pd'];
@@ -713,128 +454,124 @@ window.setupDataPKKM = async function() {
         const timE = ['Sumarni, S.E.', 'Khaerul, S.Ag', 'Hj. Murniati Mahdi, S.Pd'];
         
         const indikatorList = [
-            { aspek_id: 'aspek_A', kode: 'A.1.1.1', pertanyaan: 'Mampu mengembangkan struktur organisasi yang sesuai dengan kebutuhan program.', bukti_diharapkan: ['Bagan/struktur organisasi', 'Notulen rapat keputusan tentang penyusunan struktur organisasi', 'Dokumen sosialisasi', 'Daftar hadir'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.1.2', pertanyaan: 'Mampu menempatkan personalia yang sesuai dengan kebutuhan.', bukti_diharapkan: ['Dokumen penetapan/pengesahan susunan organisasi madrasah', 'Rincian tugas setiap personil pada struktur organisasi madrasah', 'Sertifikat', 'SOP Personalia'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.1.3', pertanyaan: 'Mampu mengembangkan pedoman dan prosedur kerja organisasi madrasah.', bukti_diharapkan: ['Dokumen SOP madrasah/pedoman Sistem Informasi Madrasah'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.2.1', pertanyaan: 'Mampu mengembangkan program baru untuk meningkatkan pencapaian target yang lebih tinggi.', bukti_diharapkan: ['Visi dan misi madrasah', 'Data prestasi madrasah', 'Data hasil UN 3 tahun terakhir', 'Data alumni', 'RKJM'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.2.2', pertanyaan: 'Mampu dan terampil dalam membangun tim kerja yang efektif untuk mendapatkan produk kinerja yang lebih unggul.', bukti_diharapkan: ['Bagan/struktur organisasi', 'SK', 'Tugas dan fungsi', 'Pedoman monitoring dan evaluasi kerja', 'Pedoman reward dan punishment'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.2.3', pertanyaan: 'Mampu menerapkan berbagai teknik pembaharuan dalam pengelolaan pembelajaran.', bukti_diharapkan: ['Dokumen kurikulum', 'Kalender pendidikan', 'Perangkat pembelajaran', 'Penilaian', 'Peraturan akademik', 'Notulen diskusi evaluasi rutin pembelajaran'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.2.4', pertanyaan: 'Mampu mengembangkan potensi dan meningkatkan prestasi madrasah.', bukti_diharapkan: ['Data prestasi madrasah 1 tahun terakhir', 'Data hasil UN 1 tahun terakhir', 'Dokumen akreditasi', 'Program ekstrakurikuler', 'Program unggulan madrasah'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.3.1', pertanyaan: 'Merencanakan kerjasama dengan lembaga pemerintah, swasta dan masyarakat.', bukti_diharapkan: ['SK komite madrasah', 'AD/ART komite madrasah', 'Program kerja komite madrasah', 'Laporan kegiatan komite madrasah', 'Dokumen tertulis kerja sama (MoU)', 'Foto-foto', 'Sertifikat/plakat kerja sama', 'Laporan kegiatan'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.3.2', pertanyaan: 'Melakukan pendekatan-pendekatan dalam rangka mendapatkan dukungan dari lembaga pemerintah, swasta dan masyarakat.', bukti_diharapkan: ['Program kegiatan kerjasama', 'Foto kegiatan', 'Jadwal kegiatan', 'Laporan kegiatan'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.3.3', pertanyaan: 'Memanfaatkan dan memelihara hubungan kerjasama dengan lembaga pemerintah, swasta dan masyarakat.', bukti_diharapkan: ['Laporan kegiatan kerja', 'Laporan monitoring/evaluasi kegiatan', 'Dokumentasi foto/video pelaksanaan kerjasama'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.4.1', pertanyaan: 'Mengaplikasikan pengembangan kurikulum yang mengacu kepada standar isi.', bukti_diharapkan: ['Kurikulum', 'Kalender pendidikan', 'Perangkat pembelajaran', 'Pedoman penilaian', 'Peraturan akademik', 'Buku kerja guru', 'Dokumen rapat penyusunan kurikulum (daftar hadir, daftar peserta, foto)'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.4.2', pertanyaan: 'Mengaplikasikan pengembangan proses pembelajaran yang mengacu kepada standar proses.', bukti_diharapkan: ['Dokumen pengembangan silabus', 'RPP', 'Struktur Kurikulum', 'Pembagian jam mengajar', 'Jadwal mengajar', 'RPE', 'Buku teks', 'Jurnal mengajar guru', 'Data siswa per kelas', 'Dokumen supervisi (laporan pemantauan pembelajaran, laporan supervisi, laporan evaluasi pembelajaran dan rencana tindak lanjut)'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.4.3', pertanyaan: 'Mengaplikasikan sistem penilaian pembelajaran yang mengacu kepada standar penilaian.', bukti_diharapkan: ['Instrumen penilaian', 'Kisi-kisi soal', 'Kumpulan naskah soal', 'Analisis butir soal', 'Dokumen analisis hasil belajar siswa', 'Laporan hasil belajar siswa', 'Tindak lanjut hasil penilaian', 'Dokumen pelaksanaan PAS', 'Dokumen pelaksanaan PAT'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.4.4', pertanyaan: 'Melaksanakan penjaminan mutu pencapaian standar kompetensi lulusan.', bukti_diharapkan: ['Dokumen program kegiatan kesiswaan', 'Laporan kegiatan kesiswaan', 'Dokumentasi kegiatan kesiswaan', 'Laporan kegiatan pembiasaan siswa', 'Dokumen kegiatan literasi', 'Data rata-rata hasil ujian 2 tahun terakhir', 'Data prestasi akademik 2 tahun akademik', 'Data prestasi non akademik 2 tahun terakhir'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.5.1', pertanyaan: 'Mampu mengelola laboratorium madrasah agar dapat dimanfaatkan secara optimal untuk kepentingan pembelajaran peserta didik.', bukti_diharapkan: ['Luas sesuai standar', 'Sarana pendukung laboratorium', 'Program kerja laboratorium', 'Jurnal dan laporan pengelolaan laboratorium'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.5.2', pertanyaan: 'Mampu mengelola perpustakaan madrasah dalam menyiapkan sumber belajar yang diperlukan oleh peserta didik.', bukti_diharapkan: ['Luas sesuai standar', 'Sarana pendukung', 'Daftar buku induk perpustakaan', 'Laporan pengelolaan perpustakaan', 'Program kerja perpustakaan'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.5.3', pertanyaan: 'Mampu mengelola usaha madrasah untuk pembelajaran peserta didik dan pemasukan tambahan dana bagi madrasah.', bukti_diharapkan: ['Data/laporan kegiatan usaha madrasah', 'Dokumentasi kegiatan (foto/video)'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.5.4', pertanyaan: 'Mampu mengelola koperasi madrasah baik sebagai media praktik maupun sebagai sumber belajar bagi peserta didik.', bukti_diharapkan: ['Instrumen hasil praktik pembelajaran', 'Foto kegiatan praktik', 'AD/ART koperasi', 'Laporan RAT'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.6.1', pertanyaan: 'Memanfaatkan teknologi informasi dan komunikasi dalam manajemen madrasah.', bukti_diharapkan: ['Fasilitas teknologi dan informasi', 'Sumber daya informasi', 'Website madrasah', 'Pedoman sistem informasi madrasah'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.6.2', pertanyaan: 'Memanfaatkan teknologi informasi dan komunikasi dalam pembelajaran, baik sebagai sumber belajar maupun sebagai alat/media pembelajaran.', bukti_diharapkan: ['Ketersediaan komputer', 'Jaringan internet', 'Website madrasah', 'Alamat email madrasah', 'Pemanfaatan TIK untuk pembelajaran (observasi/wawancara)'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.6.3', pertanyaan: 'Memanfaatkan teknologi informasi dan komunikasi dalam menjalin kerjasama dengan pihak lain.', bukti_diharapkan: ['Pengelola SIM', 'Fasilitas SIM', 'Surat tugas pengelola SIM', 'Pelaporan data dan informasi', 'Program promosi', 'Observasi dan wawancara'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.6.4', pertanyaan: 'Memanfaatkan teknologi informasi dan komunikasi dalam promosi program madrasah dan prestasi yang telah dicapai.', bukti_diharapkan: ['Pengelola SIM', 'Fasilitas SIM', 'Surat tugas pengelola SIM', 'Pelaporan data dan informasi', 'Program informasi', 'Observasi dan wawancara'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.7.1', pertanyaan: 'Mampu mengembangkan sistem administrasi pengelolaan secara efektif dengan dukungan penerapan teknologi informasi dan komunikasi.', bukti_diharapkan: ['Jumlah komputer dan LCD yang cukup', 'Memiliki jaringan internet', 'Memiliki web sekolah', 'Memiliki email madrasah', 'Laporan absensi elektronik', 'Dokumen lain pemanfaatan TIK untuk administrasi madrasah'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.7.2', pertanyaan: 'Mengelola administrasi pembelajaran secara efektif dengan dukungan penerapan teknologi informasi dan komunikasi.', bukti_diharapkan: ['Jumlah komputer dan LCD yang cukup', 'Memiliki jaringan internet', 'Pemanfaatan TIK untuk pembelajaran (seperti Edmodo, Google Classroom, dll)', 'Pengelolaan penilaian secara online'], penugasan: timA },
-            { aspek_id: 'aspek_A', kode: 'A.1.7.3', pertanyaan: 'Mampu mengembangkan sistem pengelolaan perpustakaan secara efektif dengan dukungan penerapan teknologi informasi dan komunikasi.', bukti_diharapkan: ['Katalog', 'BSE', 'Akses internet', 'Komputer', 'Dokumen aplikasi layanan perpustakaan'], penugasan: timA },
-            { aspek_id: 'aspek_B', kode: 'B.2.1.1', pertanyaan: 'Mampu mengembangkan RKJM, RKT/RKAM dengan program lainnya berdasarkan data hasil evaluasi dalam pemenuhan 8 SNP.', bukti_diharapkan: ['Dokumen Evaluasi diri madrasah', 'Dokumen RKJM dan RKT berbasis SDM'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.1.2', pertanyaan: 'Mampu merumuskan visi-misi sebagai arah pengembangan program RKJM, RKT/RKAS dan program lainnya.', bukti_diharapkan: ['Visi misi yang telah ditetapkan oleh Kamad', 'Berita acara dan daftar hadir kegiatan perumusan atau peninjauan kembali dan penetapan visi misi'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.1.3', pertanyaan: 'Mampu menentukan strategi pencapaian tujuan madrasah, dilengkapi dengan indikator pencapaian yang terukur.', bukti_diharapkan: ['Program kerja', 'RKJM dan RKTM'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.1.4', pertanyaan: 'Mampu menyusun program dengan rencana evaluasi keterlaksanaan dan pencapaian program.', bukti_diharapkan: ['RKJM dan RKTM', 'Rencana/program evaluasi dan monitoring'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.2.1', pertanyaan: 'Mampu memberi contoh berdisiplin; hadir tepat waktu, disiplin menggunakan waktu, dan tepat waktu mengakhiri pekerjaan.', bukti_diharapkan: ['Daftar hadir elektronik kamad', 'Daftar hadir pada kegiatan di madrasah'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.2.2', pertanyaan: 'Mampu melaksanakan peraturan sesuai dengan ketentuan yang berlaku.', bukti_diharapkan: ['Wawancara dengan warga madrasah', 'Laporan kehadiran', 'Notulen rapat/briefing pengarahan kegiatan'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.2.3', pertanyaan: 'Mampu menunjukkan keteladanan dalam memanfaatkan sumber daya secara efektif dan efisien.', bukti_diharapkan: ['Wawancara dengan warga madrasah', 'Dokumen monitoring dan evaluasi pemanfaatan sumber belajar', 'Notulensi rapat/diskusi pemanfaatan sumber belajar'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.2.4', pertanyaan: 'Mampu menunjukkan kedisiplinan sebagai insan pembelajar.', bukti_diharapkan: ['Koleksi buku referensi/ilmu pengetahuan', 'Karya tulis yang diterbitkan atau tidak', 'Majalah/koran madrasah', 'Website madrasah', 'Blog pribadi'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.3.1', pertanyaan: 'Mampu menjadi contoh dan berbudaya mutu yang kompetitif dalam mendorong peningkatan prestasi akademik dan nonakademik peserta didik.', bukti_diharapkan: ['Peningkatan KKM', 'Hasil UN', 'Program keunggulan dan inovasi baik akademik maupun non akademik', 'Data prestasi akademik dan non akademik'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.3.2', pertanyaan: 'Mampu melengkapi sarana dan prasarana untuk menciptakan suasana belajar kondusif dan inovatif bagi peserta didik.', bukti_diharapkan: ['Observasi lingkungan madrasah; suasana lingkungan yang asri bersih rindang aman dan menyenangkan peserta didik'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.3.3', pertanyaan: 'Mampu memfasilitasi kegiatan-kegiatan untuk meningkatkan budaya baca dan budaya tulis peserta didik.', bukti_diharapkan: ['Rencana dan laporan pelaksanaan kegiatan literasi', 'Dokumen kegiatan pengembangan budaya baca', 'Dokumen/pajangan hasil karya tulis siswa', 'Data kunjungan perpustakaan', 'Data peminjaman buku perpustakaan', 'Observasi/wawancara'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.3.4', pertanyaan: 'Mampu memfasilitasi kegiatan-kegiatan lomba di bidang akademik dan nonakademik bagi peserta didik.', bukti_diharapkan: ['Dokumen penyelenggaraan kegiatan kompetisi yang dimulai dari tingkat madrasah', 'Daftar perolehan piagam, penghargaan, piala, trofi perlombaan di semua jenjang'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.4.1', pertanyaan: 'Mampu menyusun perencanaan pengembangan pendidik dan tenaga kependidikan.', bukti_diharapkan: ['Program kerja kepala madrasah', 'Laporan kegiatan workshop/pelatihan kompetisi guru', 'Dokumentasi (foto/video) kegiatan workshop atau pelatihan guru'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.4.2', pertanyaan: 'Mampu melakukan pembinaan berkala untuk meningkatkan mutu SDM madrasah.', bukti_diharapkan: ['Buku/catatan pembinaan guru dan tendik', 'Notulen dan daftar hadir rapat pembinaan', 'Laporan kinerja kepala madrasah'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.4.3', pertanyaan: 'Memfasilitasi guru dan staf administrasi untuk meningkatkan kegiatan pembinaan kompetensi.', bukti_diharapkan: ['Buku/catatan pembinaan guru dan tendik', 'Notulen dan daftar hadir rapat pembinaan', 'Laporan kinerja kepala madrasah'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.4.4', pertanyaan: 'Memantau dan menilai penerapan hasil pelatihan dalam pekerjaan di madrasah.', bukti_diharapkan: ['Program pelatihan pengembangan profesi guru dan tendik', 'Laporan pelaksanaan pelatihan pengembangan profesi guru dan tendik'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.5.1', pertanyaan: 'Mampu mengelola fasilitas prasarana, perabot dan sarana madrasah (gedung, bangunan, dan lahan meja, kursi, lemari, peralatan kantor, dan alat kebersihan).', bukti_diharapkan: ['Buku Inventaris', 'Buku pemeliharaan sarana dan prasarana'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.5.2', pertanyaan: 'Mampu mengelola perpustakaan madrasah.', bukti_diharapkan: ['Buku induk perpustakaan', 'Buku data grafik layanan perpustakaan'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.5.3', pertanyaan: 'Mampu mengelola laboratorium madrasah.', bukti_diharapkan: ['Daftar inventaris laboratorium', 'Buku/jurnal/data/grafik layanan laboratorium'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.5.4', pertanyaan: 'Mampu mengelola fasilitas penunjang madrasah lainnya (bengkel, toko, koperasi, kebun, dsb).', bukti_diharapkan: ['Data fasilitas penunjang wirausaha yang dikelola oleh madrasah'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.6.1', pertanyaan: 'Menyusun perencanaan penerimaan, pengelolaan dan pengembangan kompetensi peserta didik.', bukti_diharapkan: ['Dokumen program penerimaan peserta didik baru', 'Brosur', 'Data hasil analisis kemampuan peserta didik baru', 'Hasil psikotes minat bakat peserta didik baru'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.6.2', pertanyaan: 'Memiliki program pengembangan potensi diri dan prestasi peserta didik.', bukti_diharapkan: ['Program pengembangan diri peserta didik baik akademik maupun non akademik', 'Laporan pengembangan diri peserta didik akademik maupun non akademik'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.6.3', pertanyaan: 'Memfasilitasi kegiatan-kegiatan untuk meningkatkan pembiasaan melalui penanaman nilai-nilai.', bukti_diharapkan: ['Program kegiatan akademik dan non akademik dan laporan', 'Laporan kegiatan pembiasaan diri peserta didik', 'Dokumentasi kegiatan'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.6.4', pertanyaan: 'Memfasilitasi kegiatan pengembangan diri bagi peserta didik, pendidik, dan tenaga kependidikan lainnya secara optimal.', bukti_diharapkan: ['Program kegiatan pengembangan diri', 'Dokumen kegiatan', 'Data prestasi siswa guru dan tendik'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.7.1', pertanyaan: 'Mampu mengarahkan secara efektif dalam menerapkan prinsip-prinsip pengembangan KTSP dalam kegiatan IHT, Workshop, Rapat Koordinasi, dan kegiatan MGMP/KKG.', bukti_diharapkan: ['Dokumen kurikulum yang berlaku', 'SK tim pengembangan kurikulum', 'Dokumen penyusunan dokumen kurikulum daftar hadir berita acara notulen', 'Laporan kegiatan workshop rakor pengembangan kurikulum'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.7.2', pertanyaan: 'Mampu mengendalikan pelaksanaan KTSP berlandaskan kalender pendidikan, menerbitkan surat keputusan pembagian tugas mengajar, dan menerapkan aturan akademik.', bukti_diharapkan: ['Struktur kurikulum', 'Jadwal pelajaran', 'Daftar hadir guru', 'Peraturan akademik', 'Kalender pendidikan', 'SK pembagian tugas mengajar'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.7.3', pertanyaan: 'Memfasilitasi efektivitas tim kerja guru dalam rangka meningkatkan mutu pembelajaran.', bukti_diharapkan: ['Program KKG/MGMP di madrasah', 'Laporan pelaksanaan KKG/MGMP', 'Dokumentasi kegiatan (foto/video)'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.7.4', pertanyaan: 'Mampu mengembangkan pelayanan belajar yang inovatif melalui pengembangan perangkat dan sumber belajar yang terbarukan.', bukti_diharapkan: ['Observasi kelas studi dokumen wawancara dengan siswa dan guru', 'Menelaah ragam metode media dan sumber belajar yang digunakan dalam RPP'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.7.5', pertanyaan: 'Memfasilitasi peserta didik dalam mengembangkan kolaborasi dan kompetisi bidang akademik dan nonakademik.', bukti_diharapkan: ['Program laporan dan dokumen kegiatan kesiswaan (kegiatan akademik dan non akademik)', 'Data prestasi akademik maupun non akademik', 'Dokumentasi kegiatan (laporan, foto, video dll)'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.8.1', pertanyaan: 'Mampu merencanakan kebutuhan keuangan madrasah sesuai dengan rencana pengembangan madrasah, baik jangka pendek maupun jangka panjang.', bukti_diharapkan: ['RKJM dan RKTM', 'Rencana anggaran', 'Laporan keuangan', 'Buku kas'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.8.2', pertanyaan: 'Mampu mengupayakan sumber-sumber keuangan terutama dari luar madrasah dan dari unit usaha madrasah.', bukti_diharapkan: ['RKJM dan RKTM', 'Laporan keuangan'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.8.3', pertanyaan: 'Mampu mengkoordinasikan pengelolaan keuangan sesuai dengan peraturan dan perundang-undangan berdasarkan asas prioritas dan efisiensi.', bukti_diharapkan: ['RKJM dan RKTM', 'Laporan keuangan'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.8.4', pertanyaan: 'Mampu membuat laporan dan evaluasi pengelolaan keuangan madrasah sesuai dengan prinsip efisien, transparan, dan akuntabel.', bukti_diharapkan: ['RKJM dan RKTM', 'Laporan keuangan', 'Buku kas'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.9.1', pertanyaan: 'Mampu mengelola administrasi surat masuk dan surat keluar sesuai dengan pedoman persuratan yang berlaku.', bukti_diharapkan: ['Dokumen surat masuk dan keluar'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.9.2', pertanyaan: 'Mampu mengelola administrasi madrasah yang meliputi administrasi akademik, kesiswaan, sarana/prasarana, keuangan, dan hubungan madrasah dengan masyarakat.', bukti_diharapkan: ['Melalui studi dokumen administrasi akademik kesiswaan sarana dan prasarana keuangan dan hubungan madrasah dengan masyarakat'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.9.3', pertanyaan: 'Mampu mengelola administrasi kearsipan madrasah baik arsip dinamis maupun arsip lainnya.', bukti_diharapkan: ['Melalui studi dokumen: administrasi madrasah', 'Arsip administrasi', 'SOP administrasi madrasah'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.9.4', pertanyaan: 'Mampu mengelola administrasi akreditasi madrasah sesuai dengan prinsip-prinsip tersedianya dokumen pendukung dan bukti fisik.', bukti_diharapkan: ['Dokumen administrasi pemenuhan SNP madrasah'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.10.1', pertanyaan: 'Menyusun standar kinerja program pendidikan yang dapat diukur dan dinilai.', bukti_diharapkan: ['Dokumen SKP yang terukur'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.10.2', pertanyaan: 'Melakukan monitoring dan evaluasi kinerja program pendidikan dengan menggunakan teknik yang sesuai.', bukti_diharapkan: ['Dokumen pelaksanaan monitoring dan evaluasi yang sesuai'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.10.3', pertanyaan: 'Menyusun laporan sesuai dengan standar pelaporan monitoring dan evaluasi.', bukti_diharapkan: ['Dokumen laporan pelaksanaan monitoring dan evaluasi'], penugasan: timB },
-            { aspek_id: 'aspek_B', kode: 'B.2.10.4', pertanyaan: 'Merumuskan program tindak lanjut berdasarkan hasil evaluasi pelaksanaan program sebelumnya.', bukti_diharapkan: ['Dokumen laporan pelaksanaan monitoring dan evaluasi'], penugasan: timB },
-            { aspek_id: 'aspek_C', kode: 'C.3.1.1', pertanyaan: 'Memahami dan menghayati arti dan tujuan perubahan (inovasi) madrasah.', bukti_diharapkan: ['Program pengembangan kewirausahaan', 'Profil madrasah beberapa tahun terakhir'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.1.2', pertanyaan: 'Menggunakan metode, teknik dan proses perubahan madrasah.', bukti_diharapkan: ['Melalui observasi: pemanfaatan hasil inovasi dan kreatifitas', 'Membudayakan hasil inovasi dan kreatifitas', 'Pengembangan pembudayaan inovasi dan kreatifitas'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.1.3', pertanyaan: 'Menumbuhkan iklim yang mendorong kebebasan berpikir untuk menciptakan kreativitas dan inovasi.', bukti_diharapkan: ['Data jenis usaha produktif yang dimiliki', 'Program pengelolaan dan pendayagunaan hasil usaha'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.1.4', pertanyaan: 'Mendorong warga madrasah untuk melakukan prakarsa/keberanian moral untuk melakukan hal-hal baru.', bukti_diharapkan: ['Data jenis usaha produktif yang dimiliki', 'Program pengelolaan dan pendayagunaan hasil usaha'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.2.1', pertanyaan: 'Mampu bertindak kreatif dan inovatif dalam melaksanakan pekerjaan melalui cara berpikir dan cara bertindak.', bukti_diharapkan: ['RPP yang memuat rencana pembelajaran untuk menumbuhkan keterampilan berpikir dan bertindak kreatif, produktif, kritis, mandiri, kolaboratif dan komunikatif', 'Hasil kerja dan karya siswa', 'Foto-foto aktifitas pembelajaran siswa-siswa'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.2.2', pertanyaan: 'Mampu memberdayakan potensi madrasah secara optimal ke dalam berbagai kegiatan-kegiatan produktif yang menguntungkan madrasah.', bukti_diharapkan: ['Rencana Pengembangan Madrasah (RPM)', 'Dokumen penanganan permasalahan/kasus', 'Dokumen hasil kegiatan sekolah', 'Dokumen hasil kegiatan pengembangan madrasah'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.2.3', pertanyaan: 'Mampu menumbuhkan jiwa kewirausahaan (kreatif, inovatif dan produktif) di kalangan warga madrasah.', bukti_diharapkan: ['Rencana Pengembangan Madrasah (RPM)', 'Dokumen penanganan permasalahan/kasus', 'Dokumen hasil kegiatan sekolah', 'Dokumen hasil kegiatan pengembangan madrasah'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.2.4', pertanyaan: 'Mampu mencatat ide-ide baru, kemudian mengembangkannya.', bukti_diharapkan: ['Melalui observasi, wawancara dan studi dokumen: Rencana Pengembangan Madrasah'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.3.1', pertanyaan: 'Bersedia belajar dari orang lain.', bukti_diharapkan: ['Forum komunikasi dengan lembaga pendidikan lain dan orang tua siswa per tingkat kelas/kelas/angkatan foto-foto kegiatan', 'Komunitas/forum kegiatan yang diikuti'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.3.2', pertanyaan: 'Ingin selalu melakukan yang terbaik.', bukti_diharapkan: ['Melalui observasi, wawancara dan studi dokumen: dokumen/foto pelaksanaan kegiatan', 'Keikut-sertaan dalam lomba-lomba pembelajaran/pendidikan maupun manajemen prestasi dalam lomba guru, tenaga kependidikan dan kepala madrasah'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.3.3', pertanyaan: 'Menciptakan perubahan yang kuat.', bukti_diharapkan: ['Melalui observasi, wawancara dan studi dokumen: program inovasi madrasah atau Rencana Pengembangan Madrasah (RPM)', 'Laporan target yang sudah dicapai'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.4.1', pertanyaan: 'Mampu melibatkan tokoh agama, masyarakat, dan pemerintah dalam memecahkan masalah kelembagaan.', bukti_diharapkan: ['Melalui observasi, wawancara dan studi dokumen: MoU dengan pihak lain', 'Sister school kemitraan dengan sekolah lain'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.4.2', pertanyaan: 'Mampu bersikap obyektif/tidak memihak dalam mengatasi konflik internal madrasah.', bukti_diharapkan: ['Observasi, wawancara dan studi dokumen kegiatan/foto'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.4.3', pertanyaan: 'Mampu bersikap simpatik/tenggang rasa terhadap orang lain.', bukti_diharapkan: ['Observasi, wawancara dan studi dokumen kegiatan dan foto'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.5.1', pertanyaan: 'Mampu merencanakan kegiatan produksi/jasa sesuai dengan potensi madrasah.', bukti_diharapkan: ['Dokumen laporan yang memuat pelaksanaan dan hasil program pengembangan unit produksi kewirausahaan'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.5.2', pertanyaan: 'Mampu membina kegiatan produksi/jasa sesuai dengan prinsip-prinsip pengelolaan yang professional dan akuntabel.', bukti_diharapkan: ['Dokumen laporan memuat pelaksanaan dan hasil Program Pengembangan Unit Produksi Kewirausahaan'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.5.3', pertanyaan: 'Mampu melaksanakan pengawasan kegiatan produksi/jasa dan menyusun laporan.', bukti_diharapkan: ['Wawancara dan studi dokumen: laporan hasil Evaluasi Program Pengembangan Kewirausahaan yang memuat hasil evaluasi', 'Program Pengembangan Jiwa Kewirausahaan', 'Program Pengembangan Unit Produksi Kewirausahaan'], penugasan: timC },
-            { aspek_id: 'aspek_C', kode: 'C.3.5.4', pertanyaan: 'Mampu mengembangkan kegiatan produksi/jasa dan pemasarannya.', bukti_diharapkan: ['Wawancara dan studi dokumen: laporan hasil Evaluasi Program Pengembangan Kewirausahaan yang memuat hasil evaluasi', 'Program Pengembangan Jiwa Kewirausahaan', 'Program Pengembangan Unit Produksi Kewirausahaan'], penugasan: timC },
-            { aspek_id: 'aspek_D', kode: 'D.4.1.1', pertanyaan: 'Mengidentifikasi masalah yang guru hadapi dalam pelaksanaan pembelajaran.', bukti_diharapkan: ['Melalui studi dokumen: program pengawasan pembelajaran/supervisi pembelajaran', 'Jadwal pelaksanaan supervisi', 'SK tim supervisor'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.1.2', pertanyaan: 'Mampu merumuskan tujuan yang dilengkapi dengan target pencapaian yang terukur.', bukti_diharapkan: ['Studi dokumen: program pengawasan pembelajaran/supervisi pembelajaran', 'Jadwal pelaksanaan supervisi', 'Laporan hasil supervisi'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.1.3', pertanyaan: 'Mampu mengembangkan instrumen supervisi.', bukti_diharapkan: ['Studi dokumen: instrumen supervisi pembelajaran'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.2.1', pertanyaan: 'Mengadakan pertemuan awal untuk menjaring data rencana pembelajaran dan menetapkan fokus kegiatan supervisi.', bukti_diharapkan: ['Wawancara dan studi dokumen: program pengawasan pembelajaran/supervisi pembelajaran', 'Jadwal supervisi', 'Daftar hadir, notulen, foto pertemuan awal supervisi'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.2.2', pertanyaan: 'Melaksanakan kegiatan pemantauan pembelajaran dan membuat catatan yang objektif dan selektif sebagai bahan pemecahan masalah supervisi.', bukti_diharapkan: ['Wawancara dan studi dokumen: instrumen supervisi pembelajaran', 'Laporan hasil supervisi pembelajaran', 'Catatan rekomendasi hasil supervisi', 'Rencana tindak lanjut hasil supervisi'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.2.3', pertanyaan: 'Melakukan pertemuan refleksi, menganalisis catatan hasil observasi, dan menyimpulkan hasil observasi.', bukti_diharapkan: ['Wawancara dan studi dokumen: analisis hasil supervisi pembelajaran', 'Catatan rekomendasi hasil supervisi', 'Daftar hadir, notulen, foto pertemuan, refleksi hasil supervisi'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.2.4', pertanyaan: 'Bersama guru menyusun rekomendasi tindaklanjut perbaikan dalam bentuk kegiatan analisis butir soal, remedial, dan pengayaan.', bukti_diharapkan: ['Wawancara dan studi dokumen: dokumen hasil analisis dan tindak lanjut supervisi penilaian', 'Program kegiatan workshop/diklat penilaian untuk guru', 'Hasil analisis butir soal', 'Program remedial dan pengayaan'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.3.1', pertanyaan: 'Memfasilitasi guru dalam merencanakan tindak lanjut perbaikan sistem penilaian hasil belajar.', bukti_diharapkan: ['Wawancara dan studi dokumen: dokumen hasil analisis dan tindak lanjut supervisi pembelajaran', 'Hasil kegiatan workshop/diklat untuk guru', 'Data dan piagam hasil pelatihan guru'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.3.2', pertanyaan: 'Mengecek ulang keterlaksanaan rekomendasi oleh guru.', bukti_diharapkan: ['Wawancara dan studi dokumen rekomendasi hasil perbaikan sistem penilaian hasil belajar'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.3.3', pertanyaan: 'Melaksanakan pembinaan dan pengembangan guru sebagai tindak lanjut kegiatan supervisi.', bukti_diharapkan: ['Laporan tindak lanjut supervisi', 'Program PKB guru', 'Laporan kegiatan pembinaan guru', 'Daftar hadir, notulen, foto kegiatan PKB guru'], penugasan: timD },
-            { aspek_id: 'aspek_D', kode: 'D.4.3.4', pertanyaan: 'Menggunakan data hasil supervisi untuk pemetaan ketercapaian program sebagai dasar perbaikan siklus berikutnya.', bukti_diharapkan: ['Program PKB guru', 'Laporan kegiatan pembinaan guru', 'Daftar hadir, notulen, foto kegiatan PKB guru'], penugasan: timD },
-            { aspek_id: 'aspek_E', kode: 'E.5.1.1', pertanyaan: 'Prestasi akademik peserta didik.', bukti_diharapkan: ['Piagam/sertifikat kejuaraan akademik (tingkat kecamatan s.d. nasional)'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.1.2', pertanyaan: 'Prestasi non akademik peserta didik.', bukti_diharapkan: ['Piagam/sertifikat kejuaraan nonakademik (tingkat kecamatan s.d. nasional)'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.2.1', pertanyaan: 'Prestasi akademik pendidik dan tenaga kependidikan.', bukti_diharapkan: ['Piagam/sertifikat kejuaraan akademik GTK'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.2.2', pertanyaan: 'Prestasi non akademik pendidik dan tenaga kependidikan.', bukti_diharapkan: ['Piagam/sertifikat kejuaraan nonakademik GTK'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.3.1', pertanyaan: 'Kelebihan prestasi akademik dari madrasah/sekolah lainnya.', bukti_diharapkan: ['Dokumen peringkat madrasah (tingkat kecamatan s.d. nasional)'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.3.2', pertanyaan: 'Kelebihan prestasi non akademik dari madrasah/sekolah lainnya.', bukti_diharapkan: ['Dokumen peringkat madrasah (tingkat kecamatan s.d. nasional)'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.3.3', pertanyaan: 'Kelebihan prestasi akademik dan non akademik pendidik dan tenaga kependidikan.', bukti_diharapkan: ['Dokumen peringkat GTK'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.1', pertanyaan: 'Ijazah yang dimiliki kepala madrasah.', bukti_diharapkan: ['Fotokopi Ijazah terakhir Kepala Madrasah (S1/S2/S3)'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.2', pertanyaan: 'Pendidikan dan pelatihan yang pernah diikuti oleh kepala madrasah.', bukti_diharapkan: ['Sertifikat STTPL/Diklat minimal 3 buah'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.3', pertanyaan: 'Penguasaan ICT kepala madrasah.', bukti_diharapkan: ['Sertifikat pelatihan Microsoft Office/Internet'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.4', pertanyaan: 'Prestasi yang diraih oleh kepala madrasah.', bukti_diharapkan: ['Piagam/sertifikat kejuaraan kepala madrasah'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.5', pertanyaan: 'Kegiatan penelitian kependidikan yang telah dilakukan oleh kepala madrasah.', bukti_diharapkan: ['Laporan Penelitian Tindakan Sekolah (PTS)/Karya Tulis Ilmiah'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.6', pertanyaan: 'Kegiatan pelibatan komite dalam mendukung program madrasah.', bukti_diharapkan: ['Dokumentasi pelibatan komite dan stakeholder'], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.7', pertanyaan: 'Kegiatan kemitraan dengan stakeholder pendidikan dalam meningkatkan kompetensi guru madrasah.', bukti_diharapkan: ['Dokumen kemitraan dengan stakeholder pendidikan'], penugasan: timE }
+            { aspek_id: 'aspek_A', kode: 'A.1.1.1', pertanyaan: 'Mampu mengembangkan struktur organisasi yang sesuai dengan kebutuhan program.', bukti_diharapkan: ['Bagan/struktur organisasi', 'Notulen rapat', 'Dokumen sosialisasi', 'Daftar hadir'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.1.2', pertanyaan: 'Mampu menempatkan personalia yang sesuai dengan kebutuhan.', bukti_diharapkan: ['Dokumen penetapan organisasi', 'Rincian tugas', 'Sertifikat', 'SOP Personalia'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.1.3', pertanyaan: 'Mampu mengembangkan pedoman dan prosedur kerja organisasi madrasah.', bukti_diharapkan: ['Dokumen SOP madrasah', 'Pedoman SIM'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.2.1', pertanyaan: 'Mampu mengembangkan program baru untuk meningkatkan pencapaian target.', bukti_diharapkan: ['Visi misi', 'Data prestasi', 'Data UN 3 tahun', 'Data alumni', 'RKJM'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.2.2', pertanyaan: 'Mampu membangun tim kerja yang efektif.', bukti_diharapkan: ['Bagan struktur', 'SK', 'Tugas fungsi', 'Pedoman monev', 'Pedoman reward/punishment'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.2.3', pertanyaan: 'Mampu menerapkan teknik pembaharuan dalam pengelolaan pembelajaran.', bukti_diharapkan: ['Dokumen kurikulum', 'Kalender pendidikan', 'Perangkat pembelajaran', 'Peraturan akademik', 'Notulen evaluasi'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.2.4', pertanyaan: 'Mampu mengembangkan potensi dan meningkatkan prestasi madrasah.', bukti_diharapkan: ['Data prestasi 1 tahun', 'Dokumen akreditasi', 'Program ekstrakurikuler', 'Program unggulan'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.3.1', pertanyaan: 'Merencanakan kerjasama dengan lembaga pemerintah, swasta dan masyarakat.', bukti_diharapkan: ['SK komite', 'AD/ART', 'Proker komite', 'MoU', 'Foto/Sertifikat'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.3.2', pertanyaan: 'Melakukan pendekatan untuk mendapatkan dukungan dari lembaga.', bukti_diharapkan: ['Program kegiatan kerjasama', 'Foto', 'Jadwal', 'Laporan'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.3.3', pertanyaan: 'Memanfaatkan dan memelihara hubungan kerjasama.', bukti_diharapkan: ['Laporan kegiatan', 'Laporan monev', 'Dokumentasi'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.4.1', pertanyaan: 'Mengaplikasikan pengembangan kurikulum sesuai standar isi.', bukti_diharapkan: ['Kurikulum', 'Kalender pendidikan', 'Perangkat pembelajaran', 'Buku kerja guru', 'Dokumen rapat'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.4.2', pertanyaan: 'Mengaplikasikan pengembangan proses pembelajaran sesuai standar proses.', bukti_diharapkan: ['Silabus', 'RPP', 'Struktur Kurikulum', 'Jadwal mengajar', 'Jurnal mengajar', 'Dokumen supervisi'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.4.3', pertanyaan: 'Mengaplikasikan sistem penilaian pembelajaran sesuai standar penilaian.', bukti_diharapkan: ['Instrumen penilaian', 'Kisi-kisi', 'Naskah soal', 'Analisis butir soal', 'Laporan hasil belajar', 'Dokumen PAS/PAT'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.4.4', pertanyaan: 'Melaksanakan penjaminan mutu pencapaian standar kompetensi lulusan.', bukti_diharapkan: ['Program kegiatan kesiswaan', 'Laporan pembiasaan', 'Dokumen literasi', 'Data hasil ujian 2 tahun'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.5.1', pertanyaan: 'Mampu mengelola laboratorium madrasah secara optimal.', bukti_diharapkan: ['Luas sesuai standar', 'Sarana pendukung', 'Program kerja lab', 'Jurnal pengelolaan'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.5.2', pertanyaan: 'Mampu mengelola perpustakaan madrasah.', bukti_diharapkan: ['Luas sesuai standar', 'Daftar buku induk', 'Laporan pengelolaan', 'Program kerja'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.5.3', pertanyaan: 'Mampu mengelola usaha madrasah.', bukti_diharapkan: ['Laporan kegiatan usaha', 'Dokumentasi'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.5.4', pertanyaan: 'Mampu mengelola koperasi madrasah.', bukti_diharapkan: ['Instrumen hasil praktik', 'AD/ART koperasi', 'Laporan RAT'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.6.1', pertanyaan: 'Memanfaatkan TIK dalam manajemen madrasah.', bukti_diharapkan: ['Fasilitas TIK', 'Website madrasah', 'Pedoman SIM'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.6.2', pertanyaan: 'Memanfaatkan TIK dalam pembelajaran.', bukti_diharapkan: ['Komputer', 'Internet', 'Website', 'Email', 'Pemanfaatan TIK'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.6.3', pertanyaan: 'Memanfaatkan TIK dalam menjalin kerjasama.', bukti_diharapkan: ['Pengelola SIM', 'Surat tugas', 'Pelaporan data', 'Program promosi'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.6.4', pertanyaan: 'Memanfaatkan TIK dalam promosi program madrasah.', bukti_diharapkan: ['Pengelola SIM', 'Pelaporan data', 'Program informasi'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.7.1', pertanyaan: 'Mampu mengembangkan sistem administrasi pengelolaan dengan TIK.', bukti_diharapkan: ['Komputer/LCD', 'Internet', 'Web sekolah', 'Email', 'Laporan absensi elektronik'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.7.2', pertanyaan: 'Mengelola administrasi pembelajaran dengan TIK.', bukti_diharapkan: ['Komputer/LCD', 'Internet', 'Pemanfaatan TIK pembelajaran', 'Penilaian online'], penugasan: timA },
+            { aspek_id: 'aspek_A', kode: 'A.1.7.3', pertanyaan: 'Mampu mengembangkan sistem pengelolaan perpustakaan dengan TIK.', bukti_diharapkan: ['Katalog', 'BSE', 'Internet', 'Komputer', 'Aplikasi perpustakaan'], penugasan: timA },
+            { aspek_id: 'aspek_B', kode: 'B.2.1.1', pertanyaan: 'Mampu mengembangkan RKJM, RKT/RKAM berdasarkan evaluasi 8 SNP.', bukti_diharapkan: ['Dokumen EDM', 'Dokumen RKJM dan RKT'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.1.2', pertanyaan: 'Mampu merumuskan visi-misi sebagai arah pengembangan.', bukti_diharapkan: ['Visi misi yang ditetapkan', 'Berita acara perumusan'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.1.3', pertanyaan: 'Mampu menentukan strategi pencapaian tujuan madrasah.', bukti_diharapkan: ['Program kerja', 'RKJM dan RKTM'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.1.4', pertanyaan: 'Mampu menyusun program dengan rencana evaluasi.', bukti_diharapkan: ['RKJM dan RKTM', 'Rencana monev'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.2.1', pertanyaan: 'Mampu memberi contoh berdisiplin.', bukti_diharapkan: ['Daftar hadir elektronik kamad', 'Daftar hadir kegiatan'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.2.2', pertanyaan: 'Mampu melaksanakan peraturan sesuai ketentuan.', bukti_diharapkan: ['Wawancara warga', 'Laporan kehadiran', 'Notulen rapat'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.2.3', pertanyaan: 'Mampu menunjukkan keteladanan memanfaatkan sumber daya.', bukti_diharapkan: ['Wawancara warga', 'Dokumen monev pemanfaatan sumber belajar'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.2.4', pertanyaan: 'Mampu menunjukkan kedisiplinan sebagai insan pembelajar.', bukti_diharapkan: ['Koleksi buku', 'Karya tulis', 'Majalah/koran', 'Website', 'Blog'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.3.1', pertanyaan: 'Mampu menjadi contoh berbudaya mutu yang kompetitif.', bukti_diharapkan: ['Peningkatan KKM', 'Hasil UN', 'Program keunggulan', 'Data prestasi'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.3.2', pertanyaan: 'Mampu melengkapi sarana prasarana untuk suasana belajar kondusif.', bukti_diharapkan: ['Observasi lingkungan madrasah'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.3.3', pertanyaan: 'Mampu memfasilitasi kegiatan budaya baca dan tulis.', bukti_diharapkan: ['Laporan literasi', 'Dokumen budaya baca', 'Data kunjungan perpustakaan'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.3.4', pertanyaan: 'Mampu memfasilitasi kegiatan lomba akademik dan nonakademik.', bukti_diharapkan: ['Dokumen kompetisi', 'Daftar piagam/piala'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.4.1', pertanyaan: 'Mampu menyusun perencanaan pengembangan pendidik dan tendik.', bukti_diharapkan: ['Proker kamad', 'Laporan workshop/pelatihan', 'Dokumentasi'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.4.2', pertanyaan: 'Mampu melakukan pembinaan berkala untuk meningkatkan mutu SDM.', bukti_diharapkan: ['Catatan pembinaan', 'Notulen rapat', 'Laporan kinerja'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.4.3', pertanyaan: 'Memfasilitasi guru dan staf untuk meningkatkan kompetensi.', bukti_diharapkan: ['Catatan pembinaan', 'Notulen rapat', 'Laporan kinerja'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.4.4', pertanyaan: 'Memantau penerapan hasil pelatihan dalam pekerjaan.', bukti_diharapkan: ['Program pelatihan', 'Laporan pelaksanaan'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.5.1', pertanyaan: 'Mampu mengelola fasilitas prasarana, perabot dan sarana.', bukti_diharapkan: ['Buku Inventaris', 'Buku pemeliharaan'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.5.2', pertanyaan: 'Mampu mengelola perpustakaan madrasah.', bukti_diharapkan: ['Buku induk', 'Buku data grafik layanan'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.5.3', pertanyaan: 'Mampu mengelola laboratorium madrasah.', bukti_diharapkan: ['Daftar inventaris', 'Jurnal layanan lab'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.5.4', pertanyaan: 'Mampu mengelola fasilitas penunjang madrasah lainnya.', bukti_diharapkan: ['Data fasilitas penunjang'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.6.1', pertanyaan: 'Menyusun perencanaan penerimaan dan pengembangan kompetensi peserta didik.', bukti_diharapkan: ['Proker PPDB', 'Brosur', 'Data analisis kemampuan', 'Psikotes'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.6.2', pertanyaan: 'Memiliki program pengembangan potensi diri dan prestasi.', bukti_diharapkan: ['Program pengembangan diri', 'Laporan pengembangan diri'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.6.3', pertanyaan: 'Memfasilitasi kegiatan pembiasaan melalui penanaman nilai-nilai.', bukti_diharapkan: ['Program kegiatan', 'Laporan pembiasaan', 'Dokumentasi'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.6.4', pertanyaan: 'Memfasilitasi kegiatan pengembangan diri bagi peserta didik, pendidik, tendik.', bukti_diharapkan: ['Program kegiatan', 'Dokumen kegiatan', 'Data prestasi'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.7.1', pertanyaan: 'Mampu mengarahkan pengembangan KTSP dalam IHT, Workshop, MGMP.', bukti_diharapkan: ['Dokumen kurikulum', 'SK tim', 'Notulen', 'Laporan workshop'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.7.2', pertanyaan: 'Mampu mengendalikan pelaksanaan KTSP berlandaskan kalender pendidikan.', bukti_diharapkan: ['Struktur kurikulum', 'Jadwal pelajaran', 'Peraturan akademik', 'SK pembagian tugas'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.7.3', pertanyaan: 'Memfasilitasi efektivitas tim kerja guru.', bukti_diharapkan: ['Program KKG/MGMP', 'Laporan', 'Dokumentasi'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.7.4', pertanyaan: 'Mampu mengembangkan pelayanan belajar yang inovatif.', bukti_diharapkan: ['Observasi kelas', 'Ragam metode di RPP'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.7.5', pertanyaan: 'Memfasilitasi peserta didik dalam kolaborasi dan kompetisi.', bukti_diharapkan: ['Laporan kegiatan kesiswaan', 'Data prestasi', 'Dokumentasi'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.8.1', pertanyaan: 'Mampu merencanakan kebutuhan keuangan madrasah.', bukti_diharapkan: ['RKJM dan RKTM', 'Rencana anggaran', 'Laporan keuangan', 'Buku kas'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.8.2', pertanyaan: 'Mampu mengupayakan sumber-sumber keuangan dari luar.', bukti_diharapkan: ['RKJM dan RKTM', 'Laporan keuangan'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.8.3', pertanyaan: 'Mampu mengkoordinasikan pengelolaan keuangan sesuai peraturan.', bukti_diharapkan: ['RKJM dan RKTM', 'Laporan keuangan'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.8.4', pertanyaan: 'Mampu membuat laporan dan evaluasi pengelolaan keuangan.', bukti_diharapkan: ['RKJM dan RKTM', 'Laporan keuangan', 'Buku kas'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.9.1', pertanyaan: 'Mampu mengelola administrasi surat masuk dan keluar.', bukti_diharapkan: ['Dokumen surat masuk dan keluar'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.9.2', pertanyaan: 'Mampu mengelola administrasi madrasah.', bukti_diharapkan: ['Studi dokumen administrasi'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.9.3', pertanyaan: 'Mampu mengelola administrasi kearsipan.', bukti_diharapkan: ['Arsip administrasi', 'SOP'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.9.4', pertanyaan: 'Mampu mengelola administrasi akreditasi.', bukti_diharapkan: ['Dokumen pemenuhan SNP'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.10.1', pertanyaan: 'Menyusun standar kinerja program pendidikan.', bukti_diharapkan: ['Dokumen SKP'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.10.2', pertanyaan: 'Melakukan monitoring dan evaluasi kinerja.', bukti_diharapkan: ['Dokumen monev'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.10.3', pertanyaan: 'Menyusun laporan sesuai standar pelaporan monev.', bukti_diharapkan: ['Laporan monev'], penugasan: timB },
+            { aspek_id: 'aspek_B', kode: 'B.2.10.4', pertanyaan: 'Merumuskan program tindak lanjut berdasarkan hasil evaluasi.', bukti_diharapkan: ['Laporan monev'], penugasan: timB },
+            { aspek_id: 'aspek_C', kode: 'C.3.1.1', pertanyaan: 'Memahami dan menghayati arti perubahan (inovasi) madrasah.', bukti_diharapkan: ['Program kewirausahaan', 'Profil madrasah'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.1.2', pertanyaan: 'Menggunakan metode, teknik dan proses perubahan.', bukti_diharapkan: ['Observasi pemanfaatan inovasi'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.1.3', pertanyaan: 'Menumbuhkan iklim kebebasan berpikir untuk inovasi.', bukti_diharapkan: ['Data usaha produktif', 'Program pengelolaan hasil usaha'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.1.4', pertanyaan: 'Mendorong warga madrasah melakukan prakarsa.', bukti_diharapkan: ['Data usaha produktif', 'Program pengelolaan hasil usaha'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.2.1', pertanyaan: 'Mampu bertindak kreatif dan inovatif.', bukti_diharapkan: ['RPP kreatif', 'Hasil karya siswa', 'Foto aktivitas'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.2.2', pertanyaan: 'Mampu memberdayakan potensi madrasah secara optimal.', bukti_diharapkan: ['RPM', 'Dokumen penanganan kasus', 'Dokumen hasil kegiatan'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.2.3', pertanyaan: 'Mampu menumbuhkan jiwa kewirausahaan.', bukti_diharapkan: ['RPM', 'Dokumen penanganan kasus'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.2.4', pertanyaan: 'Mampu mencatat ide-ide baru.', bukti_diharapkan: ['Rencana Pengembangan Madrasah'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.3.1', pertanyaan: 'Bersedia belajar dari orang lain.', bukti_diharapkan: ['Forum komunikasi', 'Komunitas kegiatan'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.3.2', pertanyaan: 'Ingin selalu melakukan yang terbaik.', bukti_diharapkan: ['Dokumen/foto kegiatan', 'Keikutsertaan lomba'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.3.3', pertanyaan: 'Menciptakan perubahan yang kuat.', bukti_diharapkan: ['Program inovasi/RPM', 'Laporan target'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.4.1', pertanyaan: 'Mampu melibatkan tokoh agama, masyarakat, pemerintah.', bukti_diharapkan: ['MoU', 'Sister school'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.4.2', pertanyaan: 'Mampu bersikap obyektif dalam mengatasi konflik.', bukti_diharapkan: ['Observasi, wawancara, dokumen'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.4.3', pertanyaan: 'Mampu bersikap simpatik/tenggang rasa.', bukti_diharapkan: ['Observasi, wawancara, dokumen'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.5.1', pertanyaan: 'Mampu merencanakan kegiatan produksi/jasa.', bukti_diharapkan: ['Laporan program unit produksi'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.5.2', pertanyaan: 'Mampu membina kegiatan produksi/jasa.', bukti_diharapkan: ['Laporan Program Pengembangan Unit Produksi'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.5.3', pertanyaan: 'Mampu melaksanakan pengawasan kegiatan produksi/jasa.', bukti_diharapkan: ['Laporan Evaluasi Kewirausahaan'], penugasan: timC },
+            { aspek_id: 'aspek_C', kode: 'C.3.5.4', pertanyaan: 'Mampu mengembangkan kegiatan produksi/jasa dan pemasarannya.', bukti_diharapkan: ['Laporan Evaluasi Kewirausahaan'], penugasan: timC },
+            { aspek_id: 'aspek_D', kode: 'D.4.1.1', pertanyaan: 'Mengidentifikasi masalah guru dalam pembelajaran.', bukti_diharapkan: ['Program supervisi', 'Jadwal', 'SK tim'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.1.2', pertanyaan: 'Mampu merumuskan tujuan supervisi.', bukti_diharapkan: ['Program supervisi', 'Laporan hasil'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.1.3', pertanyaan: 'Mampu mengembangkan instrumen supervisi.', bukti_diharapkan: ['Instrumen supervisi'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.2.1', pertanyaan: 'Mengadakan pertemuan awal supervisi.', bukti_diharapkan: ['Program', 'Jadwal', 'Daftar hadir/foto'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.2.2', pertanyaan: 'Melaksanakan pemantauan pembelajaran.', bukti_diharapkan: ['Instrumen', 'Laporan', 'Catatan rekomendasi'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.2.3', pertanyaan: 'Melakukan pertemuan refleksi.', bukti_diharapkan: ['Analisis hasil', 'Catatan rekomendasi', 'Foto'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.2.4', pertanyaan: 'Menyusun rekomendasi tindaklanjut perbaikan.', bukti_diharapkan: ['Dokumen tindak lanjut', 'Program workshop', 'Analisis butir soal'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.3.1', pertanyaan: 'Memfasilitasi guru merencanakan tindak lanjut.', bukti_diharapkan: ['Dokumen tindak lanjut', 'Hasil workshop'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.3.2', pertanyaan: 'Mengecek ulang keterlaksanaan rekomendasi.', bukti_diharapkan: ['Dokumen rekomendasi'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.3.3', pertanyaan: 'Melaksanakan pembinaan guru sebagai tindak lanjut.', bukti_diharapkan: ['Laporan tindak lanjut', 'Program PKB', 'Foto'], penugasan: timD },
+            { aspek_id: 'aspek_D', kode: 'D.4.3.4', pertanyaan: 'Menggunakan data hasil supervisi untuk pemetaan.', bukti_diharapkan: ['Program PKB', 'Laporan pembinaan'], penugasan: timD },
+            { aspek_id: 'aspek_E', kode: 'E.5.1.1', pertanyaan: 'Prestasi akademik peserta didik.', bukti_diharapkan: ['Piagam/sertifikat akademik'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.1.2', pertanyaan: 'Prestasi non akademik peserta didik.', bukti_diharapkan: ['Piagam/sertifikat nonakademik'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.2.1', pertanyaan: 'Prestasi akademik pendidik dan tendik.', bukti_diharapkan: ['Piagam/sertifikat GTK'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.2.2', pertanyaan: 'Prestasi non akademik pendidik dan tendik.', bukti_diharapkan: ['Piagam/sertifikat GTK'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.3.1', pertanyaan: 'Kelebihan prestasi akademik dari madrasah lain.', bukti_diharapkan: ['Dokumen peringkat'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.3.2', pertanyaan: 'Kelebihan prestasi non akademik dari madrasah lain.', bukti_diharapkan: ['Dokumen peringkat'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.3.3', pertanyaan: 'Kelebihan prestasi akademik dan non akademik GTK.', bukti_diharapkan: ['Dokumen peringkat GTK'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.4.1', pertanyaan: 'Ijazah yang dimiliki kepala madrasah.', bukti_diharapkan: ['Fotokopi Ijazah terakhir'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.4.2', pertanyaan: 'Pendidikan dan pelatihan yang pernah diikuti.', bukti_diharapkan: ['Sertifikat Diklat minimal 3 buah'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.4.3', pertanyaan: 'Penguasaan ICT kepala madrasah.', bukti_diharapkan: ['Sertifikat pelatihan Office/Internet'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.4.4', pertanyaan: 'Prestasi yang diraih oleh kepala madrasah.', bukti_diharapkan: ['Piagam/sertifikat kepala madrasah'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.4.5', pertanyaan: 'Kegiatan penelitian kependidikan.', bukti_diharapkan: ['Laporan PTS/Karya Tulis Ilmiah'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.4.6', pertanyaan: 'Kegiatan pelibatan komite.', bukti_diharapkan: ['Dokumentasi pelibatan komite'], penugasan: timE },
+            { aspek_id: 'aspek_E', kode: 'E.5.4.7', pertanyaan: 'Kegiatan kemitraan dengan stakeholder.', bukti_diharapkan: ['Dokumen kemitraan'], penugasan: timE }
         ];
         
         for (const ind of indikatorList) {
             const docId = `butir_${ind.aspek_id.replace('aspek_', '')}_${ind.kode.replace(/\./g, '_')}`;
             await db.collection('pkkm_indikator').doc(docId).set(ind);
         }
-        
-        alert(`✅ Setup Data Berhasil!\n\n📊 Total Indikator: ${indikatorList.length}\n- Dimensi A: 25 indikator\n- Dimensi B: 40 indikator\n- Dimensi C: 17 indikator\n- Dimensi D: 11 indikator\n- Dimensi E: 16 indikator\n\nTotal: 109 indikator PKKM lengkap!\n\nSilakan refresh halaman.`);
+        alert(`✅ Setup Data Berhasil!\nTotal: 109 Indikator PKKM.\nSilakan refresh halaman.`);
         location.reload();
     } catch (error) {
         alert('❌ Gagal: ' + error.message);
     }
 };
-
-// Panggil loadSavedPeriode saat halaman dimuat
-loadSavedPeriode();
