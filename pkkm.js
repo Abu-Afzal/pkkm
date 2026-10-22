@@ -1,7 +1,6 @@
-// ══════════════════════════════════════════════
-// PKKM DIGITAL - SINGLE LINK (HYBRID MODE)
-// ══════════════════════════════════════════════
 
+<<<<<<< HEAD
+=======
 const firebaseConfig = {
   apiKey: "AIzaSyBhDGXnuMIvfr-9AXCIw1zgDuJWfCgMUyE",
   authDomain: "data-undangan-digital-9dc5a.firebaseapp.com",
@@ -192,28 +191,36 @@ function renderDashboard() {
         <i class="fas fa-check-circle" style="color: #10b981;"></i> 
         <strong>${lastUpload.file_name}</strong> 
         <span style="color: #64748b;">- diupload oleh ${lastUpload.guru_nama}</span>
-        <a href="${lastUpload.file_base64 || lastUpload.file_url}" download="${lastUpload.file_name}" 
-           target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600;">
-            <i class="fas fa-download"></i> Download
-        </a>
-        <a href="${lastUpload.file_base64 || lastUpload.file_url}" 
-           target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600;">
-            <i class="fas fa-eye"></i> Preview
-        </a>
     </div>
 ` : `
     <div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>
 `}
                                 </div>
-                                <div style="flex-shrink: 0; margin-left: 12px;">
+                                <div style="flex-shrink: 0; margin-left: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                                    ${hasUpload ? `
+                                        <a href="${lastUpload.file_base64 || lastUpload.file_url}" download="${lastUpload.file_name}" 
+                                           target="_blank" style="text-decoration: none;">
+                                            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100px;">
+                                                <i class="fas fa-download"></i> Download
+                                            </button>
+                                        </a>
+                                    ` : ''}
                                     ${userData ? (isAssigned ? 
-                                        `<button class="btn btn-primary" onclick="openUploadModal('${ind.id}', '${ind.kode}', '${ind.pertanyaan.replace(/'/g, "\\'")}', '${ind.bukti_diharapkan.join(', ').replace(/'/g, "\\'")}')">
+                                        `<button class="btn" style="background: #0891b2; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100px;" onclick="openUploadModal('${ind.id}', '${ind.kode}', '${ind.pertanyaan.replace(/'/g, "\\'")}', '${ind.bukti_diharapkan.join(', ').replace(/'/g, "\\'")}')">
                                             <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
                                         </button>` : 
-                                        `<button class="btn" disabled style="background: #e2e8f0; color: #94a3b8; cursor: not-allowed; padding: 8px 12px; border-radius: 6px; border: none;"><i class="fas fa-lock"></i> Bukan Tugas Anda</button>`
+                                        `<button class="btn" disabled style="background: #e2e8f0; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100px;"><i class="fas fa-lock"></i> Bukan Tugas Anda</button>`
                                     ) : `
-                                        <button class="btn" disabled style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed; padding: 8px 12px; border-radius: 6px; border: none;"><i class="fas fa-eye"></i> View Only</button>
+                                        <button class="btn" disabled style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100px;"><i class="fas fa-eye"></i> View Only</button>
                                     `}
+                                    ${hasUpload ? `
+                                        <a href="${lastUpload.file_base64 || lastUpload.file_url}" 
+                                           target="_blank" style="text-decoration: none;">
+                                            <button class="btn" style="background: #6366f1; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100px;">
+                                                <i class="fas fa-eye"></i> Preview
+                                            </button>
+                                        </a>
+                                    ` : ''}
                                 </div>
                             </div>
                         `;
@@ -824,3 +831,5 @@ window.setupDataPKKM = async function() {
         alert('❌ Gagal: ' + error.message);
     }
 };
+
+>>>>>>> 88983f17bc9d04ae49c5057df159b4aed0c59009
