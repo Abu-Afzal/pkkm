@@ -184,15 +184,49 @@ function renderDashboard() {
                                     <div style="font-weight: 600; font-size: 0.95rem; color: #0f172a;">${ind.kode} - ${ind.pertanyaan}</div>
                                     <div style="font-size: 0.8rem; color: #64748b; margin: 4px 0;"><strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}</div>
                                     ${hasUpload ? `
-                                        <div style="margin-top: 8px; padding: 8px; background: #f0fdf4; border-radius: 4px; font-size: 0.85rem;">
-                                            <i class="fas fa-check-circle" style="color: #10b981;"></i> <strong>${lastUpload.file_name}</strong> <span style="color: #64748b;">- diupload oleh ${lastUpload.guru_nama}</span>
-                                        </div>` : `<div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>`}
+    <div style="margin-top: 8px; padding: 8px; background: #f0fdf4; border-radius: 4px; font-size: 0.85rem;">
+        <i class="fas fa-check-circle" style="color: #10b981;"></i> 
+        <strong>${lastUpload.file_name}</strong> 
+        <span style="color: #64748b;">- diupload oleh ${lastUpload.guru_nama}</span>
+        ${lastUpload.file_type === 'link' ? 
+            `<a href="${lastUpload.file_drive_link}" target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600; text-decoration: none;"><i class="fas fa-external-link-alt"></i> Buka Link</a>` :
+            `<a href="${lastUpload.file_base64}" download="${lastUpload.file_name}" target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600; text-decoration: none;"><i class="fas fa-download"></i> Download</a>`
+        }
+    </div>
+` : `
+    <div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>
+`}
                                 </div>
                                 <div style="flex-shrink: 0; margin-left: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-                                    ${hasUpload ? `<a href="${lastUpload.file_base64 || lastUpload.file_url}" download="${lastUpload.file_name}" target="_blank" style="text-decoration: none; width: 100px;"><button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;"><i class="fas fa-download"></i> Download</button></a>` : ''}
-                                    ${userData ? (isAssigned ? `<button class="btn" style="background: #0891b2; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="openUploadModal('${ind.id}', '${ind.kode}', '${ind.pertanyaan.replace(/'/g, "\\'")}', '${ind.bukti_diharapkan.join(', ').replace(/'/g, "\\'")}')"><i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}</button>` : `<button class="btn" disabled style="background: #e2e8f0; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-lock"></i> Bukan Tugas Anda</button>`) : `<button class="btn" disabled style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-eye"></i> View Only</button>`}
-                                    ${hasUpload ? `<a href="${lastUpload.file_base64 || lastUpload.file_url}" target="_blank" style="text-decoration: none; width: 100px;"><button class="btn" style="background: #6366f1; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;"><i class="fas fa-eye"></i> Preview</button></a><button class="btn" style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="deleteUpload('${lastUpload.id}', '${ind.id}')"><i class="fas fa-trash"></i> Hapus</button>` : ''}
-                                </div>
+    ${hasUpload ? (lastUpload.file_type === 'link' ? `
+        <a href="${lastUpload.file_drive_link}" target="_blank" style="text-decoration: none; width: 100px;">
+            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
+                <i class="fas fa-external-link-alt"></i> Buka
+            </button>
+        </a>
+    ` : `
+        <a href="${lastUpload.file_base64}" download="${lastUpload.file_name}" target="_blank" style="text-decoration: none; width: 100px;">
+            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
+                <i class="fas fa-download"></i> Download
+            </button>
+        </a>
+    `) : ''}
+    
+    ${userData ? (isAssigned ? 
+        `<button class="btn" style="background: #0891b2; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="openUploadModal('${ind.id}', '${ind.kode}', '${ind.pertanyaan.replace(/'/g, "\\'")}', '${ind.bukti_diharapkan.join(', ').replace(/'/g, "\\'")}')">
+            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
+        </button>` : 
+        `<button class="btn" disabled style="background: #e2e8f0; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-lock"></i> Bukan Tugas Anda</button>`
+    ) : `
+        <button class="btn" disabled style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-eye"></i> View Only</button>
+    `}
+    
+    ${hasUpload ? `
+        <button class="btn" style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="deleteUpload('${lastUpload.id}')">
+            <i class="fas fa-trash"></i> Hapus
+        </button>
+    ` : ''}
+</div>
                             </div>`;
                     }).join('')}
                 </div>
@@ -249,54 +283,135 @@ window.logout = () => auth.signOut();
 window.closeModal = () => document.getElementById('uploadModal').classList.remove('active');
 
 // ══════════════════════════════════════════════
-// 6. UPLOAD LOGIC (BASE64 + TAHUN AJARAN)
-// ═════════════════════════════════════════════
+// 6. UPLOAD LOGIC (FILE BASE64 atau GOOGLE DRIVE LINK)
+// ══════════════════════════════════════════════
+let uploadMode = 'file'; // Default mode
+
+window.switchUploadMode = function(mode) {
+    uploadMode = mode;
+    const btnFile = document.getElementById('btnModeFile');
+    const btnLink = document.getElementById('btnModeLink');
+    const divFile = document.getElementById('uploadModeFile');
+    const divLink = document.getElementById('uploadModeLink');
+    
+    if (mode === 'file') {
+        btnFile.style.background = '#0891b2'; btnFile.style.color = 'white';
+        btnLink.style.background = '#e2e8f0'; btnLink.style.color = '#475569';
+        divFile.style.display = 'block';
+        divLink.style.display = 'none';
+    } else {
+        btnLink.style.background = '#0891b2'; btnLink.style.color = 'white';
+        btnFile.style.background = '#e2e8f0'; btnFile.style.color = '#475569';
+        divFile.style.display = 'none';
+        divLink.style.display = 'block';
+    }
+};
+
 window.openUploadModal = (indId, kode, pertanyaan, bukti) => {
     if (!userData) { alert('Silakan login terlebih dahulu!'); return; }
     currentIndikatorId = indId;
+    
     document.getElementById('modalIndikatorTitle').textContent = `${kode} - ${pertanyaan}`;
     document.getElementById('modalBuktiTitle').textContent = `Bukti: ${bukti}`;
     document.getElementById('fileNameDisplay').textContent = '';
     document.getElementById('fileInput').value = '';
+    document.getElementById('driveLinkInput').value = '';
+    
+    // Reset ke mode file
+    switchUploadMode('file');
+    
     document.getElementById('uploadModal').classList.add('active');
 };
 
-window.handleFileSelect = async (event) => {
+window.handleFileSelectPreview = function(event) {
     const file = event.target.files[0];
-    if (!file || !userData) return;
-    
-    if (file.size > 500 * 1024) { 
-        alert(`⚠️ Ukuran file terlalu besar! Maksimal: 500 KB.\nUkuran file Anda: ${(file.size / 1024).toFixed(1)} KB.\nSilakan kompres file terlebih dahulu.`); 
-        return; 
+    const display = document.getElementById('fileNameDisplay');
+    if (file) {
+        const sizeKB = (file.size / 1024).toFixed(1);
+        display.innerHTML = `<i class="fas fa-file"></i> ${file.name} <span style="color: #64748b; font-size: 0.85rem;">(${sizeKB} KB)</span>`;
+        
+        if (file.size > 500 * 1024) {
+            display.innerHTML += `<br><span style="color: #ef4444; font-size: 0.8rem;">⚠️ Melebihi 500KB. Silakan gunakan tab "Link Google Drive" atau kompres file.</span>`;
+        }
     }
+};
 
-    document.getElementById('fileNameDisplay').innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengupload...`;
+window.submitUpload = async function() {
+    if (uploadMode === 'link') {
+        const link = document.getElementById('driveLinkInput').value.trim();
+        if (!link) {
+            alert('⚠️ Harap masukkan link Google Drive!');
+            return;
+        }
+        if (!link.includes('drive.google.com')) {
+            alert('⚠️ Link tidak valid. Pastikan link berasal dari Google Drive!');
+            return;
+        }
+        
+        const data = {
+            indikator_id: currentIndikatorId,
+            guru_uid: userData.uid,
+            guru_nama: userData.nama,
+            file_name: 'Dokumen Google Drive',
+            file_drive_link: link,
+            file_type: 'link',
+            updated_at: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        await saveToFirestore(data);
+        
+    } else {
+        const file = document.getElementById('fileInput').files[0];
+        if (!file) {
+            alert('⚠️ Harap pilih file terlebih dahulu!');
+            return;
+        }
+        if (file.size > 500 * 1024) {
+            alert(`⚠️ Ukuran file terlalu besar! Maksimal: 500 KB.\nUkuran file Anda: ${(file.size / 1024).toFixed(1)} KB.\nSilakan gunakan opsi "Link Google Drive" atau kompres file.`);
+            return;
+        }
+
+        const display = document.getElementById('fileNameDisplay');
+        display.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengupload...`;
+        
+        try {
+            const base64String = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+
+            const data = {
+                indikator_id: currentIndikatorId,
+                guru_uid: userData.uid,
+                guru_nama: userData.nama,
+                file_name: file.name,
+                file_base64: base64String,
+                file_size: (file.size / 1024).toFixed(1) + ' KB',
+                file_type: 'file',
+                tahun_ajaran: currentTahun,
+                updated_at: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            await saveToFirestore(data);
+        } catch (error) {
+            alert("❌ Gagal upload: " + error.message);
+            display.textContent = '';
+        }
+    }
+};
+
+async function saveToFirestore(data) {
+    const display = document.getElementById('fileNameDisplay');
+    if (display && uploadMode === 'file') display.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Menyimpan ke database...`;
     
     try {
-        const base64String = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(file);
-        });
-
         const existing = await db.collection('pkkm_uploads')
             .where('indikator_id', '==', currentIndikatorId)
             .where('guru_uid', '==', userData.uid)
             .where('tahun_ajaran', '==', currentTahun)
             .get();
-
-        const data = {
-            indikator_id: currentIndikatorId,
-            guru_uid: userData.uid,
-            guru_nama: userData.nama,
-            file_name: file.name,
-            file_base64: base64String,
-            file_size: (file.size / 1024).toFixed(1) + ' KB',
-            file_type: file.type,
-            tahun_ajaran: currentTahun, // 🆕 HANYA SIMPAN TAHUN AJARAN
-            updated_at: firebase.firestore.FieldValue.serverTimestamp()
-        };
 
         if (!existing.empty) {
             await existing.docs[0].ref.update(data);
@@ -305,18 +420,18 @@ window.handleFileSelect = async (event) => {
             await db.collection('pkkm_uploads').add(data);
         }
 
-        alert(`✅ Upload berhasil untuk Tahun Ajaran ${currentTahun}!`);
+        alert(`✅ Berhasil disimpan untuk Tahun Ajaran ${currentTahun}!`);
         closeModal();
         loadPKKMData();
     } catch (error) {
-        alert("❌ Gagal upload: " + error.message);
-        document.getElementById('fileNameDisplay').textContent = '';
+        alert("❌ Gagal menyimpan: " + error.message);
+        if (display) display.textContent = '';
     }
-};
+}
 
 window.deleteUpload = async function(uploadId) {
-    if (!userData) return;
-    if (!confirm('⚠️ Yakin ingin menghapus file ini?')) return;
+    if (!userData) { alert('Silakan login terlebih dahulu!'); return; }
+    if (!confirm('⚠️ Yakin ingin menghapus bukti ini?')) return;
     try {
         await db.collection('pkkm_uploads').doc(uploadId).delete();
         alert('✅ File berhasil dihapus!');

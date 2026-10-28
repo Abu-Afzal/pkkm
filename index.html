@@ -189,9 +189,9 @@
         </div>
     </div>
 
-    <!-- Modal Upload -->
+        <!-- Modal Upload -->
     <div class="modal" id="uploadModal">
-        <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
                 <h3><i class="fas fa-cloud-upload-alt"></i> Upload Bukti Fisik</h3>
                 <button class="close-btn" onclick="closeModal()">&times;</button>
@@ -201,15 +201,40 @@
                     <h4 style="margin: 0 0 4px 0; color: #0e7490;" id="modalIndikatorTitle">Indikator</h4>
                     <p style="margin: 0; color: #64748b; font-size: 0.9rem;" id="modalBuktiTitle">Bukti: -</p>
                 </div>
-                <div id="uploadArea">
-                    <label class="file-drop-area" style="border: 2px dashed #cbd5e1; padding: 30px; text-align: center; border-radius: 8px; cursor: pointer;">
-                        <span class="file-drop-text"><i class="fas fa-cloud-upload-alt"></i> Klik untuk pilih file (Maks 500KB)</span>
-                        <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="handleFileSelect(event)" style="display: none;">
+                
+                <!-- Pilihan Mode Upload -->
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button type="button" id="btnModeFile" onclick="switchUploadMode('file')" style="flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; background: #0891b2; color: white;">
+                        📁 Upload File (Maks 500KB)
+                    </button>
+                    <button type="button" id="btnModeLink" onclick="switchUploadMode('link')" style="flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; background: #e2e8f0; color: #475569;">
+                        🔗 Link Google Drive
+                    </button>
+                </div>
+
+                <!-- Area Upload File -->
+                <div id="uploadModeFile">
+                    <label class="file-drop-area" style="border: 2px dashed #cbd5e1; padding: 30px; text-align: center; border-radius: 8px; cursor: pointer; display: block;">
+                        <span class="file-drop-text"><i class="fas fa-cloud-upload-alt"></i> Klik untuk pilih file</span>
+                        <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="handleFileSelectPreview(event)" style="display: none;">
                     </label>
                     <div id="fileNameDisplay" style="margin-top: 10px; font-weight: 600; color: #0e7490;"></div>
                 </div>
-                <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+
+                <!-- Area Input Link -->
+                <div id="uploadModeLink" style="display: none;">
+                    <label style="font-weight: 600; font-size: 0.9rem; color: #334155; display: block; margin-bottom: 8px;">Tempel Link Google Drive di sini:</label>
+                    <input type="url" id="driveLinkInput" placeholder="https://drive.google.com/file/d/..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+                    <p style="font-size: 0.8rem; color: #ef4444; margin-top: 6px;">
+                        ⚠️ <strong>Penting:</strong> Pastikan akses file di Google Drive diatur ke <em>"Siapa saja yang memiliki link"</em> (Anyone with the link).
+                    </p>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                     <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
+                    <button class="btn btn-primary" onclick="submitUpload()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-save"></i> Simpan
+                    </button>
                 </div>
             </div>
         </div>
