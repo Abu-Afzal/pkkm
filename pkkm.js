@@ -184,49 +184,46 @@ function renderDashboard() {
                                     <div style="font-weight: 600; font-size: 0.95rem; color: #0f172a;">${ind.kode} - ${ind.pertanyaan}</div>
                                     <div style="font-size: 0.8rem; color: #64748b; margin: 4px 0;"><strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}</div>
                                     ${hasUpload ? `
-    <div style="margin-top: 8px; padding: 8px; background: #f0fdf4; border-radius: 4px; font-size: 0.85rem;">
-        <i class="fas fa-check-circle" style="color: #10b981;"></i> 
-        <strong>${lastUpload.file_name}</strong> 
-        <span style="color: #64748b;">- diupload oleh ${lastUpload.guru_nama}</span>
-        ${lastUpload.file_type === 'link' ? 
-            `<a href="${lastUpload.file_drive_link}" target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600; text-decoration: none;"><i class="fas fa-external-link-alt"></i> Buka Link</a>` :
-            `<a href="${lastUpload.file_base64}" download="${lastUpload.file_name}" target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600; text-decoration: none;"><i class="fas fa-download"></i> Download</a>`
-        }
-    </div>
-` : `
-    <div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>
-`}
+                                        <div style="margin-top: 8px; padding: 8px; background: #f0fdf4; border-radius: 4px; font-size: 0.85rem;">
+                                            <i class="fas fa-check-circle" style="color: #10b981;"></i> 
+                                            <strong>${lastUpload.file_name}</strong> 
+                                            <span style="color: #64748b;">- diupload oleh ${lastUpload.guru_nama}</span>
+                                            ${lastUpload.file_type === 'link' ? 
+                                                `<a href="${lastUpload.file_drive_link}" target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600; text-decoration: none;"><i class="fas fa-external-link-alt"></i> Buka Link</a>` : 
+                                                `<a href="${lastUpload.file_base64}" download="${lastUpload.file_name}" target="_blank" style="color: #0891b2; margin-left: 8px; font-weight: 600; text-decoration: none;"><i class="fas fa-download"></i> Download</a>`
+                                            }
+                                        </div>` : `<div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>`}
                                 </div>
                                 <div style="flex-shrink: 0; margin-left: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-    ${hasUpload ? (lastUpload.file_type === 'link' ? `
-        <a href="${lastUpload.file_drive_link}" target="_blank" style="text-decoration: none; width: 100px;">
-            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
-                <i class="fas fa-external-link-alt"></i> Buka
-            </button>
-        </a>
-    ` : `
-        <a href="${lastUpload.file_base64}" download="${lastUpload.file_name}" target="_blank" style="text-decoration: none; width: 100px;">
-            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
-                <i class="fas fa-download"></i> Download
-            </button>
-        </a>
-    `) : ''}
-    
-    ${userData ? (isAssigned ? 
-        `<button class="btn" style="background: #0891b2; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="openUploadModal('${ind.id}', '${ind.kode}', '${ind.pertanyaan.replace(/'/g, "\\'")}', '${ind.bukti_diharapkan.join(', ').replace(/'/g, "\\'")}')">
-            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
-        </button>` : 
-        `<button class="btn" disabled style="background: #e2e8f0; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-lock"></i> Bukan Tugas Anda</button>`
-    ) : `
-        <button class="btn" disabled style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-eye"></i> View Only</button>
-    `}
-    
-    ${hasUpload ? `
-        <button class="btn" style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="deleteUpload('${lastUpload.id}')">
-            <i class="fas fa-trash"></i> Hapus
-        </button>
-    ` : ''}
-</div>
+                                    ${hasUpload ? (lastUpload.file_type === 'link' ? `
+                                        <a href="${lastUpload.file_drive_link}" target="_blank" style="text-decoration: none; width: 100px;">
+                                            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
+                                                <i class="fas fa-external-link-alt"></i> Buka
+                                            </button>
+                                        </a>
+                                    ` : `
+                                        <a href="${lastUpload.file_base64}" download="${lastUpload.file_name}" target="_blank" style="text-decoration: none; width: 100px;">
+                                            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
+                                                <i class="fas fa-download"></i> Download
+                                            </button>
+                                        </a>
+                                    `) : ''}
+                                    
+                                    ${userData ? (isAssigned ? 
+                                        `<button class="btn" style="background: #0891b2; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="openUploadModal('${ind.id}', '${ind.kode}', '${ind.pertanyaan.replace(/'/g, "\\'")}', '${ind.bukti_diharapkan.join(', ').replace(/'/g, "\\'")}')">
+                                            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
+                                        </button>` : 
+                                        `<button class="btn" disabled style="background: #e2e8f0; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-lock"></i> Bukan Tugas Anda</button>`
+                                    ) : `
+                                        <button class="btn" disabled style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed; padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; width: 100%;"><i class="fas fa-eye"></i> View Only</button>
+                                    `}
+                                    
+                                    ${hasUpload ? `
+                                        <button class="btn" style="background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="deleteUpload('${lastUpload.id}')">
+                                            <i class="fas fa-trash"></i> Hapus
+                                        </button>
+                                    ` : ''}
+                                </div>
                             </div>`;
                     }).join('')}
                 </div>
@@ -355,6 +352,7 @@ window.submitUpload = async function() {
             file_name: 'Dokumen Google Drive',
             file_drive_link: link,
             file_type: 'link',
+            tahun_ajaran: currentTahun,
             updated_at: firebase.firestore.FieldValue.serverTimestamp()
         };
         
