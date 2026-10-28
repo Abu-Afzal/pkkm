@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ═════════════════════════════════════════════
 // 2. TAB & PERIODE NAVIGATION
-// ═════════════════════════════════════════════
+// ════════════════════════════════════════════
 window.switchMainTab = function(tabName) {
     document.querySelectorAll('.tab-content').forEach(tab => { tab.style.display = 'none'; tab.classList.remove('active'); });
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -195,19 +195,18 @@ function renderDashboard() {
                                         </div>` : `<div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;"><i class="fas fa-clock"></i> Belum ada dokumen</div>`}
                                 </div>
                                 <div style="flex-shrink: 0; margin-left: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-                                    ${hasUpload ? (lastUpload.file_type === 'link' ? `
-                                        <a href="${lastUpload.file_drive_link}" target="_blank" style="text-decoration: none; width: 100px;">
-                                            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
-                                                <i class="fas fa-external-link-alt"></i> Buka
-                                            </button>
-                                        </a>
-                                    ` : `
-                                        <a href="${lastUpload.file_base64}" download="${lastUpload.file_name}" target="_blank" style="text-decoration: none; width: 100px;">
+                                    ${hasUpload ? `
+                                        <a href="${lastUpload.file_base64 || lastUpload.file_drive_link}" target="_blank" style="text-decoration: none; width: 100px;">
                                             <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
                                                 <i class="fas fa-download"></i> Download
                                             </button>
                                         </a>
-                                    `) : ''}
+                                        <a href="${lastUpload.file_base64 || lastUpload.file_drive_link}" target="_blank" style="text-decoration: none; width: 100px;">
+                                            <button class="btn" style="background: #6366f1; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
+                                                <i class="fas fa-eye"></i> Preview
+                                            </button>
+                                        </a>
+                                    ` : ''}
                                     
                                     ${userData ? (isAssigned ? 
                                         `<button class="btn" style="background: #0891b2; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;" onclick="openUploadModal('${ind.id}', '${ind.kode}', '${ind.pertanyaan.replace(/'/g, "\\'")}', '${ind.bukti_diharapkan.join(', ').replace(/'/g, "\\'")}')">
@@ -444,7 +443,7 @@ window.deleteUpload = async function(uploadId) {
 // ══════════════════════════════════════════════
 function checkAdminAccess() {
     if (!userData || (userData.role !== 'admin' && userData.role !== 'kepala')) {
-        alert('⛔ Akses ditolak! Hanya Admin/Kepala Madrasah.');
+        alert(' Akses ditolak! Hanya Admin/Kepala Madrasah.');
         return false;
     }
     return true;
@@ -483,7 +482,7 @@ function renderAdminUsersTable() {
 
 window.setPassword = async function(userId, email) {
     const newPassword = prompt(`Password baru untuk ${email} (Min. 6 karakter):`);
-    if (!newPassword || newPassword.length < 6) { alert('❌ Minimal 6 karakter!'); return; }
+    if (!newPassword || newPassword.length < 6) { alert(' Minimal 6 karakter!'); return; }
     if (!confirm(`Set password "${newPassword}" untuk ${email}?`)) return;
     try {
         await db.collection('users').doc(userId).update({ password: newPassword });
@@ -685,6 +684,6 @@ window.setupDataPKKM = async function() {
         alert(`✅ Setup Data Berhasil!\nTotal: 109 Indikator PKKM.\nSilakan refresh halaman.`);
         location.reload();
     } catch (error) {
-        alert('❌ Gagal: ' + error.message);
+        alert(' Gagal: ' + error.message);
     }
 };
