@@ -27,7 +27,7 @@ let currentTahun = '2026/2027';
 // 1. INIT & AUTH STATE
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-    loadSavedPeriode(); // Load tahun ajaran tersimpan
+    loadSavedPeriode();
     loadPKKMData();
     
     auth.onAuthStateChanged(user => {
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ═════════════════════════════════════════════
 // 2. TAB & PERIODE NAVIGATION
-// ════════════════════════════════════════════
+// ═════════════════════════════════════════════
 window.switchMainTab = function(tabName) {
     document.querySelectorAll('.tab-content').forEach(tab => { tab.style.display = 'none'; tab.classList.remove('active'); });
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -104,7 +104,6 @@ async function loadPKKMData() {
         const aspekSnapshot = await db.collection('pkkm_aspek').orderBy('kode').get();
         const indikatorSnapshot = await db.collection('pkkm_indikator').get();
         
-        // 🆕 HANYA FILTER BERDASARKAN TAHUN AJARAN
         const uploadsSnapshot = await db.collection('pkkm_uploads')
             .where('tahun_ajaran', '==', currentTahun)
             .get();
@@ -148,6 +147,67 @@ async function loadPKKMData() {
         console.error("Error loading data:", error);
     }
 }
+
+// ═════════════════════════════════════════════
+// FUNGSI PREVIEW PDF YANG DIPERBAIKI
+// ═════════════════════════════════════════════
+window.previewFile = function(uploadData) {
+    if (!uploadData) return;
+    
+    // Jika link Google Drive
+    if (uploadData.file_type === 'link' && uploadData.file_drive_link) {
+        window.open(uploadData.file_drive_link, '_blank');
+        return;
+    }
+    
+    // Jika file base64
+    if (uploadData.file_base64) {
+        try {
+            // Buat blob dari base64
+            const byteCharacters = atob(uploadData.file_base64.split(',')[1]);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            
+            // Buat URL dari blob
+            const blobUrl = URL.createObjectURL(blob);
+            
+            // Buka di tab baru
+            const newWindow = window.open();
+            if (newWindow) {
+                newWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Preview: ${uploadData.file_name || 'Dokumen'}</title>
+                        <style>
+                            body { margin: 0; padding: 0; }
+                            iframe { width: 100%; height: 100vh; border: none; }
+                        </style>
+                    </head>
+                    <body>
+                        <iframe src="${blobUrl}" type="application/pdf"></iframe>
+                    </body>
+                    </html>
+                `);
+                newWindow.document.close();
+            } else {
+                // Fallback: download file
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = uploadData.file_name || 'dokumen.pdf';
+                link.click();
+                URL.revokeObjectURL(blobUrl);
+            }
+        } catch (error) {
+            console.error('Error previewing file:', error);
+            alert('❌ Gagal membuka preview. Silakan download file.');
+        }
+    }
+};
 
 function renderDashboard() {
     const container = document.getElementById('aspekContainer');
@@ -196,16 +256,12 @@ function renderDashboard() {
                                 </div>
                                 <div style="flex-shrink: 0; margin-left: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
                                     ${hasUpload ? `
-                                        <a href="${lastUpload.file_base64 || lastUpload.file_drive_link}" target="_blank" style="text-decoration: none; width: 100px;">
-                                            <button class="btn" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
-                                                <i class="fas fa-download"></i> Download
-                                            </button>
-                                        </a>
-                                        <a href="${lastUpload.file_base64 || lastUpload.file_drive_link}" target="_blank" style="text-decoration: none; width: 100px;">
-                                            <button class="btn" style="background: #6366f1; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%;">
-                                                <i class="fas fa-eye"></i> Preview
-                                            </button>
-                                        </a>
+                                        <button onclick='previewFile(${JSON.stringify(lastUpload)})' style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100px;">
+                                            <i class="fas fa-download"></i> Download
+                                        </button>
+                                        <button onclick='previewFile(${JSON.stringify(lastUpload)})' style="background: #6366f1; color: white; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100px;">
+                                            <i class="fas fa-eye"></i> Preview
+                                        </button>
                                     ` : ''}
                                     
                                     ${userData ? (isAssigned ? 
@@ -281,7 +337,7 @@ window.closeModal = () => document.getElementById('uploadModal').classList.remov
 // ══════════════════════════════════════════════
 // 6. UPLOAD LOGIC (FILE BASE64 atau GOOGLE DRIVE LINK)
 // ══════════════════════════════════════════════
-let uploadMode = 'file'; // Default mode
+let uploadMode = 'file';
 
 window.switchUploadMode = function(mode) {
     uploadMode = mode;
@@ -313,9 +369,7 @@ window.openUploadModal = (indId, kode, pertanyaan, bukti) => {
     document.getElementById('fileInput').value = '';
     document.getElementById('driveLinkInput').value = '';
     
-    // Reset ke mode file
     switchUploadMode('file');
-    
     document.getElementById('uploadModal').classList.add('active');
 };
 
@@ -336,11 +390,11 @@ window.submitUpload = async function() {
     if (uploadMode === 'link') {
         const link = document.getElementById('driveLinkInput').value.trim();
         if (!link) {
-            alert('⚠️ Harap masukkan link Google Drive!');
+            alert('️ Harap masukkan link Google Drive!');
             return;
         }
         if (!link.includes('drive.google.com')) {
-            alert('⚠️ Link tidak valid. Pastikan link berasal dari Google Drive!');
+            alert('️ Link tidak valid. Pastikan link berasal dari Google Drive!');
             return;
         }
         
@@ -438,7 +492,7 @@ window.deleteUpload = async function(uploadId) {
     }
 };
 
-// ══════════════════════════════════════════════
+// ═════════════════════════════════════════════
 // 7. ADMIN FUNCTIONS
 // ══════════════════════════════════════════════
 function checkAdminAccess() {
@@ -482,7 +536,7 @@ function renderAdminUsersTable() {
 
 window.setPassword = async function(userId, email) {
     const newPassword = prompt(`Password baru untuk ${email} (Min. 6 karakter):`);
-    if (!newPassword || newPassword.length < 6) { alert(' Minimal 6 karakter!'); return; }
+    if (!newPassword || newPassword.length < 6) { alert('❌ Minimal 6 karakter!'); return; }
     if (!confirm(`Set password "${newPassword}" untuk ${email}?`)) return;
     try {
         await db.collection('users').doc(userId).update({ password: newPassword });
@@ -684,6 +738,6 @@ window.setupDataPKKM = async function() {
         alert(`✅ Setup Data Berhasil!\nTotal: 109 Indikator PKKM.\nSilakan refresh halaman.`);
         location.reload();
     } catch (error) {
-        alert(' Gagal: ' + error.message);
+        alert('❌ Gagal: ' + error.message);
     }
 };
