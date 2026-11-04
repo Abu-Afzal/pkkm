@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════
-// PKKM DIGITAL - MULTI TAHUN AJARAN (4 TAHUN)
-// DENGAN SUB-BUKTI UPLOAD
+// PKKM DIGITAL - TAHUN AJARAN 2026/2027
+// DENGAN SUB-BUKTI UPLOAD (LAYOUT SERAGAM)
 // ══════════════════════════════════════════════
 
 const firebaseConfig = {
@@ -21,13 +21,13 @@ let pkkmData = [];
 let allUsers = [];
 let currentSubBuktiId = null;
 
-let currentTahun = '2026/2027';
+// ✅ TAHUN AJARAN TETAP (tidak ada dropdown)
+const currentTahun = '2026/2027';
 
 // ═════════════════════════════════════════════
 // 1. INIT & AUTH STATE
 // ═════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-    loadSavedPeriode();
     loadPKKMData();
     
     auth.onAuthStateChanged(user => {
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ═════════════════════════════════════════════
-// 2. TAB & PERIODE NAVIGATION
+// 2. TAB NAVIGATION
 // ═════════════════════════════════════════════
 window.switchMainTab = function(tabName) {
     document.querySelectorAll('.tab-content').forEach(tab => { tab.style.display = 'none'; tab.classList.remove('active'); });
@@ -73,28 +73,6 @@ window.switchMainTab = function(tabName) {
     if (selectedTab) { selectedTab.style.display = 'block'; selectedTab.classList.add('active'); }
     if (selectedBtn) selectedBtn.classList.add('active');
 };
-
-window.gantiPeriode = function() {
-    const tahunSelect = document.getElementById('filterTahun');
-    const badge = document.getElementById('periodeBadge');
-    if (tahunSelect) {
-        currentTahun = tahunSelect.value;
-        if (badge) badge.innerHTML = `📅 ${currentTahun}`;
-        localStorage.setItem('pkkm_tahun', currentTahun);
-        loadPKKMData();
-    }
-};
-
-function loadSavedPeriode() {
-    const saved = localStorage.getItem('pkkm_tahun');
-    if (saved) {
-        currentTahun = saved;
-        const tahunSelect = document.getElementById('filterTahun');
-        const badge = document.getElementById('periodeBadge');
-        if (tahunSelect) tahunSelect.value = currentTahun;
-        if (badge) badge.innerHTML = `📅 ${currentTahun}`;
-    }
-}
 
 // ══════════════════════════════════════════════
 // 3. LOAD DATA & RENDER DASHBOARD
@@ -195,10 +173,19 @@ function renderDashboard() {
                         
                         return `
                             <div class="indikator-item" style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e2e8f0;">
-                                <div style="font-weight: 700; font-size: 1rem; color: #0f172a; margin-bottom: 4px;">${ind.kode} - ${ind.pertanyaan}</div>
-                                <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px;"><strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}</div>
+                                <!-- JUDUL INDIKATOR (FULL WIDTH KIRI) -->
+                                <div style="font-weight: 700; font-size: 1rem; color: #0f172a; margin-bottom: 6px;">${ind.kode} - ${ind.pertanyaan}</div>
+                                
+                                <!-- PENANGGUNG JAWAB (FULL WIDTH KIRI) -->
+                                <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 14px;">
+                                    <strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}
+                                </div>
+                                
+                                <!-- DAFTAR SUB-BUKTI (FULL WIDTH KIRI) -->
                                 <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
-                                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 8px;"><i class="fas fa-list-check"></i> Bukti yang harus diupload:</div>
+                                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 10px;">
+                                        <i class="fas fa-list-check"></i> Bukti yang harus diupload:
+                                    </div>
                                     ${ind.bukti_uploads.map((bukti, idx) => {
                                         const hasUpload = bukti.uploads.length > 0;
                                         const lastUpload = hasUpload ? bukti.uploads[bukti.uploads.length - 1] : null;
@@ -219,10 +206,10 @@ function renderDashboard() {
                                                 </div>
                                                 <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
                                                     ${hasUpload ? `
-                                                        <button onclick="previewFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})" style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                        <button onclick='previewFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
                                                             <i class="fas fa-eye"></i> Preview
                                                         </button>
-                                                        <button onclick="downloadFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})" style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                        <button onclick='downloadFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
                                                             <i class="fas fa-download"></i> Download
                                                         </button>
                                                     ` : ''}
@@ -598,10 +585,10 @@ window.saveAssignment = async function(indikatorId, btn) {
 };
 
 // ══════════════════════════════════════════════
-// 8. SETUP DATA AWAL (ADMIN ONLY) - DENGAN SUB-BUKTI
+// 8. SETUP DATA AWAL (ADMIN ONLY)
 // ══════════════════════════════════════════════
 window.setupDataPKKM = async function() {
-    if (!checkAdminAccess() || !confirm('⚠️ Isi database dengan 109 indikator + sub-bukti PKKM lengkap?')) return;
+    if (!checkAdminAccess() || !confirm('⚠️ Isi database dengan indikator + sub-bukti PKKM lengkap?')) return;
     try {
         const aspekList = [
             { kode: 'A', nama: 'Usaha Pengembangan Madrasah' }, { kode: 'B', nama: 'Pelaksanaan Tugas Manajerial' },
@@ -1162,7 +1149,7 @@ window.setupDataPKKM = async function() {
         }
         
         const totalSubBukti = indikatorList.reduce((sum, ind) => sum + (ind.bukti_list?.length || 0), 0);
-        alert(`✅ Setup Data Berhasil!\n\n📊 Total Indikator: ${indikatorList.length}\n📋 Total Sub-Bukti: ${totalSubBukti}\n\n- Dimensi A: ${indikatorList.filter(i=>i.aspek_id==='aspek_A').reduce((s,i)=>s+(i.bukti_list?.length||0),0)} sub-bukti\n- Dimensi B: ${indikatorList.filter(i=>i.aspek_id==='aspek_B').reduce((s,i)=>s+(i.bukti_list?.length||0),0)} sub-bukti\n- Dimensi C: ${indikatorList.filter(i=>i.aspek_id==='aspek_C').reduce((s,i)=>s+(i.bukti_list?.length||0),0)} sub-bukti\n- Dimensi D: ${indikatorList.filter(i=>i.aspek_id==='aspek_D').reduce((s,i)=>s+(i.bukti_list?.length||0),0)} sub-bukti\n- Dimensi E: ${indikatorList.filter(i=>i.aspek_id==='aspek_E').reduce((s,i)=>s+(i.bukti_list?.length||0),0)} sub-bukti\n\nSilakan refresh halaman.`);
+        alert(`✅ Setup Data Berhasil!\n\n📊 Total Indikator: ${indikatorList.length}\n📋 Total Sub-Bukti: ${totalSubBukti}\n\nTahun Ajaran: ${currentTahun}\n\nSilakan refresh halaman.`);
         location.reload();
     } catch (error) {
         alert('❌ Gagal: ' + error.message);
