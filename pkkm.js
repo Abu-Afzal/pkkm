@@ -193,25 +193,29 @@ function renderDashboard() {
                                                     ` : '<div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;"><i class="fas fa-clock"></i> Belum ada dokumen</div>'}
                                                 </div>
                                                 <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
-                                                    ${hasUpload ? `
-                                                        <button onclick='previewFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                                                            <i class="fas fa-eye"></i> Preview
-                                                        </button>
-                                                        <button onclick='downloadFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                                                            <i class="fas fa-download"></i> Download
-                                                        </button>
-                                                    ` : ''}
-                                                    ${userData && isAssigned ? `
-                                                        <button onclick="openUploadModal('${ind.id}', '${ind.kode}', '${bukti.id}', '${bukti.nama.replace(/'/g, "\\'")}', '${ind.pertanyaan.replace(/'/g, "\\'")}')" style="background: #0891b2; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                                                            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
-                                                        </button>
-                                                    ` : '<button disabled style="background: #e2e8f0; color: #94a3b8; padding: 5px 10px; border-radius: 5px; border: none; font-size: 0.8rem; width: 90px; cursor: not-allowed;"><i class="fas fa-lock"></i> Kunci</button>'}
-                                                    ${hasUpload ? `
-                                                        <button onclick="deleteUpload('${lastUpload.id}')" style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                                                            <i class="fas fa-trash"></i> Hapus
-                                                        </button>
-                                                    ` : ''}
-                                                </div>
+    ${hasUpload ? `
+        <button onclick='previewFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+            <i class="fas fa-eye"></i> Preview
+        </button>
+        <button onclick='downloadFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+            <i class="fas fa-download"></i> Download
+        </button>
+    ` : ''}
+    ${userData ? (isAssigned ? `
+        <button onclick="openUploadModal('${ind.id}', '${ind.kode}', '${bukti.id}', '${bukti.nama.replace(/'/g, "\\'")}', '${ind.pertanyaan.replace(/'/g, "\\'")}')" style="background: #0891b2; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
+        </button>
+        ${hasUpload ? `
+            <button onclick="deleteUpload('${lastUpload.id}')" style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                <i class="fas fa-trash"></i> Hapus
+            </button>
+        ` : ''}
+    ` : `
+        <button disabled style="background: #e2e8f0; color: #94a3b8; padding: 5px 10px; border-radius: 5px; border: none; font-size: 0.8rem; width: 90px; cursor: not-allowed;">
+            <i class="fas fa-lock"></i> Kunci
+        </button>
+    `) : ''}
+</div>
                                             </div>
                                         `;
                                     }).join('')}
