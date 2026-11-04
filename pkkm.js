@@ -362,8 +362,8 @@ window.handleFileSelectPreview = function(event) {
     if (file) {
         const sizeKB = (file.size / 1024).toFixed(1);
         display.innerHTML = `<i class="fas fa-file"></i> ${file.name} <span style="color: #64748b; font-size: 0.85rem;">(${sizeKB} KB)</span>`;
-        if (file.size > 500 * 1024) {
-            display.innerHTML += `<br><span style="color: #ef4444; font-size: 0.8rem;">⚠️ Melebihi 500KB. Gunakan tab "Link Google Drive" atau kompres file.</span>`;
+        if (file.size > 700 * 1024) {
+            display.innerHTML += `<br><span style="color: #ef4444; font-size: 0.8rem;">⚠️ Melebihi 700KB. Gunakan tab "Link Google Drive" atau kompres file.</span>`;
         }
     }
 };
@@ -389,8 +389,8 @@ window.submitUpload = async function() {
     } else {
         const file = document.getElementById('fileInput').files[0];
         if (!file) { alert('⚠️ Harap pilih file!'); return; }
-        if (file.size > 500 * 1024) {
-            alert(`⚠️ Ukuran file terlalu besar! Maksimal: 500 KB.\nUkuran: ${(file.size / 1024).toFixed(1)} KB.`);
+        if (file.size > 700 * 1024) {
+            alert(`⚠️ Ukuran file terlalu besar! Maksimal: 700 KB.\nUkuran: ${(file.size / 1024).toFixed(1)} KB.`);
             return;
         }
 
