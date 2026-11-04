@@ -67,23 +67,15 @@
                 <div class="stat-box" style="border-left-color: #ef4444;"><div class="value" id="statBelum">0</div><div class="label">Belum Diupload</div></div>
             </div>
 
-            <!-- FILTER TAHUN AJARAN -->
-            <div id="periodeFilter" style="display: flex; gap: 12px; margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex-wrap: wrap; align-items: center;">
-                <div style="color: white; font-weight: 700; font-size: 1rem; margin-right: 8px;">
-                    <i class="fas fa-calendar-alt"></i> Tahun Ajaran Aktif:
-                </div>
-                
-                <select id="filterTahun" onchange="gantiPeriode()" style="padding: 8px 12px; border: none; border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer; background: white; color: #0e7490;">
-                    <option value="2023/2024">2023/2024</option>
-                    <option value="2024/2025">2024/2025</option>
-                    <option value="2025/2026">2025/2026</option>
-                    <option value="2026/2027" selected>2026/2027</option>
-                </select>
-                
-                <div id="periodeBadge" style="margin-left: auto; background: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                    📅 2026/2027
-                </div>
-            </div>
+            <!-- BADGE TAHUN AJARAN TETAP -->
+<div id="periodeFilter" style="display: flex; gap: 12px; margin-bottom: 20px; padding: 14px 20px; background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex-wrap: wrap; align-items: center;">
+    <div style="color: white; font-weight: 700; font-size: 1rem;">
+        <i class="fas fa-calendar-alt"></i> Tahun Ajaran Aktif:
+    </div>
+    <div id="periodeBadge" style="margin-left: 12px; background: white; color: #0e7490; padding: 6px 16px; border-radius: 20px; font-size: 0.95rem; font-weight: 700;">
+        📅 2026/2027
+    </div>
+</div>
 
             <div class="card">
                 <div class="card-header">
