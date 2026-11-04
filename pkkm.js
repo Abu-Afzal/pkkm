@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════
 // PKKM DIGITAL - TAHUN AJARAN 2026/2027
-// DENGAN SUB-BUKTI UPLOAD (LAYOUT SERAGAM)
+// LAYOUT SERAGAM (SEMUA KIRI)
 // ══════════════════════════════════════════════
 
 const firebaseConfig = {
@@ -20,8 +20,6 @@ let userData = null;
 let pkkmData = [];
 let allUsers = [];
 let currentSubBuktiId = null;
-
-// ✅ TAHUN AJARAN TETAP (tidak ada dropdown)
 const currentTahun = '2026/2027';
 
 // ═════════════════════════════════════════════
@@ -29,7 +27,6 @@ const currentTahun = '2026/2027';
 // ═════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
     loadPKKMData();
-    
     auth.onAuthStateChanged(user => {
         if (user) {
             db.collection('users').where('email', '==', user.email).get().then(snapshot => {
@@ -40,11 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     dbData = doc.data();
                     docId = doc.id;
                 }
-                userData = {
-                    uid: user.uid, email: user.email,
-                    nama: dbData.nama || user.email.split('@')[0],
-                    role: dbData.role || 'guru', docId: docId
-                };
+                userData = { uid: user.uid, email: user.email, nama: dbData.nama || user.email.split('@')[0], role: dbData.role || 'guru', docId: docId };
                 updateUIForLoggedInUser();
                 renderDashboard();
                 if (userData.role === 'admin' || userData.role === 'kepala') loadAdminData();
@@ -81,10 +74,7 @@ async function loadPKKMData() {
     try {
         const aspekSnapshot = await db.collection('pkkm_aspek').orderBy('kode').get();
         const indikatorSnapshot = await db.collection('pkkm_indikator').get();
-        
-        const uploadsSnapshot = await db.collection('pkkm_uploads')
-            .where('tahun_ajaran', '==', currentTahun)
-            .get();
+        const uploadsSnapshot = await db.collection('pkkm_uploads').where('tahun_ajaran', '==', currentTahun).get();
 
         const uploadsMap = {};
         uploadsSnapshot.forEach(doc => {
@@ -104,20 +94,16 @@ async function loadPKKMData() {
                 if (ind.aspek_id === aspek.id) {
                     const buktiList = ind.bukti_list || [];
                     const indikatorWithUploads = { 
-                        id: indDoc.id, 
-                        ...ind, 
+                        id: indDoc.id, ...ind, 
                         bukti_uploads: buktiList.map(bukti => {
                             const uploads = uploadsMap[bukti.id] || [];
                             return { ...bukti, uploads: uploads };
                         })
                     };
-                    
                     buktiList.forEach(bukti => {
                         totalSubBukti++;
-                        const uploads = uploadsMap[bukti.id] || [];
-                        if (uploads.length > 0) selesaiSubBukti++;
+                        if ((uploadsMap[bukti.id] || []).length > 0) selesaiSubBukti++;
                     });
-                    
                     aspek.indikator.push(indikatorWithUploads);
                 }
             });
@@ -173,16 +159,18 @@ function renderDashboard() {
                         
                         return `
                             <div class="indikator-item" style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e2e8f0;">
-                                <!-- JUDUL INDIKATOR (FULL WIDTH KIRI) -->
-                                <div style="font-weight: 700; font-size: 1rem; color: #0f172a; margin-bottom: 6px;">${ind.kode} - ${ind.pertanyaan}</div>
-                                
-                                <!-- PENANGGUNG JAWAB (FULL WIDTH KIRI) -->
-                                <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 14px;">
-                                    <strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}
+                                <!-- JUDUL INDIKATOR -->
+                                <div style="font-weight: 700; font-size: 1rem; color: #0f172a; margin-bottom: 6px;">
+                                    <i class="fas fa-bullseye" style="color: #0891b2;"></i> ${ind.kode} - ${ind.pertanyaan}
                                 </div>
                                 
-                                <!-- DAFTAR SUB-BUKTI (FULL WIDTH KIRI) -->
-                                <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                                <!-- PENANGGUNG JAWAB -->
+                                <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 14px; padding-left: 24px;">
+                                    <i class="fas fa-users"></i> <strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}
+                                </div>
+                                
+                                <!-- DAFTAR SUB-BUKTI -->
+                                <div style="border-top: 1px dashed #e2e8f0; padding-top: 12px;">
                                     <div style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 10px;">
                                         <i class="fas fa-list-check"></i> Bukti yang harus diupload:
                                     </div>
