@@ -20,7 +20,7 @@ let userData = null;
 let pkkmData = [];
 let allUsers = [];
 let currentSubBuktiId = null;
-const currentTahun = '2026/2027';
+const currentTahun = '2023-2026';
 
 // ═════════════════════════════════════════════
 // 1. INIT & AUTH STATE
@@ -1141,7 +1141,7 @@ window.setupDataPKKM = async function() {
         }
         
         const totalSubBukti = indikatorList.reduce((sum, ind) => sum + (ind.bukti_list?.length || 0), 0);
-        alert(`✅ Setup Data Berhasil!\n\n📊 Total Indikator: ${indikatorList.length}\n📋 Total Sub-Bukti: ${totalSubBukti}\n\nTahun Ajaran: ${currentTahun}\n\nSilakan refresh halaman.`);
+        alert(`✅ Setup Data Berhasil!\n\n📊 Total Indikator: ${indikatorList.length}\n📋 Total Sub-Bukti: ${totalSubBukti}\n\nPeriode PKKM: ${currentTahun}\n\nSilakan refresh halaman.`);
         location.reload();
     } catch (error) {
         alert('❌ Gagal: ' + error.message);
