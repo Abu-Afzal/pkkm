@@ -1,15 +1,16 @@
 // ══════════════════════════════════════════════
-// PKKM DIGITAL - TAHUN AJARAN 2026/2027
-// LAYOUT SERAGAM (SEMUA KIRI)
+// PKKM DIGITAL - MA. AS'ADIYAH ERENG-ERENG
+// TAHUN AJARAN 2026/2027
 // ══════════════════════════════════════════════
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBhDGXnuMIvfr-9AXCIw1zgDuJWfCgMUyE",
-  authDomain: "data-undangan-digital-9dc5a.firebaseapp.com",
-  projectId: "data-undangan-digital-9dc5a",
-  storageBucket: "data-undangan-digital-9dc5a.firebasestorage.app",
-  messagingSenderId: "765763173060",
-  appId: "1:765763173060:web:043f3f4f5d3de0e30ae791"
+  apiKey: "AIzaSyDuAGy8Ku7Jh0is5WanEIf-A12AsVi2Kho",
+  authDomain: "pkkm-aser-281a4.firebaseapp.com",
+  projectId: "pkkm-aser-281a4",
+  storageBucket: "pkkm-aser-281a4.firebasestorage.app",
+  messagingSenderId: "17368843878",
+  appId: "1:17368843878:web:70babcedfbb0002f170fa7",
+  measurementId: "G-0T4Z0B2MXP"
 };
 
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -20,7 +21,7 @@ let userData = null;
 let pkkmData = [];
 let allUsers = [];
 let currentSubBuktiId = null;
-const currentTahun = '2023-2026';
+const currentTahun = '2026/2027';
 
 // ═════════════════════════════════════════════
 // 1. INIT & AUTH STATE
@@ -155,21 +156,46 @@ function renderDashboard() {
                 </div>
                 <div class="indikator-list">
                     ${aspek.indikator.map(ind => {
-                        const isAssigned = userData && ind.penugasan && ind.penugasan.some(p => p.toLowerCase().includes(userData.nama.toLowerCase().split(',')[0]));
                         
+                        // ══════════════════════════════════════════════════════════
+                        // LOGIKA PENUGASAN CERDAS (DIPERBAIKI)
+                        // ══════════════════════════════════════════════════════════
+                        let isAssigned = false;
+                        if (userData && ind.penugasan) {
+                            const userNameNorm = userData.nama.toLowerCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+                            const userWords = userNameNorm.split(' ');
+                            const commonPrefixes = ['nur', 'andi', 'st', 'hj', 'siti', 'sri', 'muhammad', 'ahmad', 'nia', 'lia'];
+                            
+                            isAssigned = ind.penugasan.some(penugasanNama => {
+                                const assignedNameNorm = penugasanNama.toLowerCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+                                const assignedWords = assignedNameNorm.split(' ');
+                                
+                                // 1. Kecocokan Eksak (Menyelesaikan "Nur Syamsi S.Pd" vs "Nur Syamsi S.Hum")
+                                if (userNameNorm === assignedNameNorm) return true;
+                                
+                                // 2. Kecocokan Subset (Menyelesaikan "Nur Faida" cocok dengan "Nur Faida Ulfa S.Kom")
+                                const allWordsMatch = userWords.every(uWord => assignedWords.includes(uWord));
+                                
+                                if (allWordsMatch) {
+                                    if (userWords.length >= 2) return true; // Spesifik (misal: "Nur Faida")
+                                    if (userWords.length === 1) {
+                                        if (assignedWords.length === 1) return true;
+                                        if (!commonPrefixes.includes(userWords[0])) return true; // misal: "Erwin" cocok dengan "Erwin S.Pd"
+                                    }
+                                }
+                                return false;
+                            });
+                        }
+                        // ══════════════════════════════════════════════════════════
+
                         return `
                             <div class="indikator-item" style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e2e8f0;">
-                                <!-- JUDUL INDIKATOR -->
                                 <div style="font-weight: 700; font-size: 1rem; color: #0f172a; margin-bottom: 6px;">
                                     <i class="fas fa-bullseye" style="color: #0891b2;"></i> ${ind.kode} - ${ind.pertanyaan}
                                 </div>
-                                
-                                <!-- PENANGGUNG JAWAB -->
                                 <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 14px; padding-left: 24px;">
                                     <i class="fas fa-users"></i> <strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}
                                 </div>
-                                
-                                <!-- DAFTAR SUB-BUKTI -->
                                 <div style="border-top: 1px dashed #e2e8f0; padding-top: 12px;">
                                     <div style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 10px;">
                                         <i class="fas fa-list-check"></i> Bukti yang harus diupload:
@@ -193,29 +219,29 @@ function renderDashboard() {
                                                     ` : '<div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;"><i class="fas fa-clock"></i> Belum ada dokumen</div>'}
                                                 </div>
                                                 <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
-    ${hasUpload ? `
-        <button onclick='previewFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-            <i class="fas fa-eye"></i> Preview
-        </button>
-        <button onclick='downloadFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-            <i class="fas fa-download"></i> Download
-        </button>
-    ` : ''}
-    ${userData ? (isAssigned ? `
-        <button onclick="openUploadModal('${ind.id}', '${ind.kode}', '${bukti.id}', '${bukti.nama.replace(/'/g, "\\'")}', '${ind.pertanyaan.replace(/'/g, "\\'")}')" style="background: #0891b2; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
-        </button>
-        ${hasUpload ? `
-            <button onclick="deleteUpload('${lastUpload.id}')" style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                <i class="fas fa-trash"></i> Hapus
-            </button>
-        ` : ''}
-    ` : `
-        <button disabled style="background: #e2e8f0; color: #94a3b8; padding: 5px 10px; border-radius: 5px; border: none; font-size: 0.8rem; width: 90px; cursor: not-allowed;">
-            <i class="fas fa-lock"></i> Kunci
-        </button>
-    `) : ''}
-</div>
+                                                    ${hasUpload ? `
+                                                        <button onclick='previewFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                            <i class="fas fa-eye"></i> Preview
+                                                        </button>
+                                                        <button onclick='downloadFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                            <i class="fas fa-download"></i> Download
+                                                        </button>
+                                                    ` : ''}
+                                                    ${userData ? (isAssigned ? `
+                                                        <button onclick="openUploadModal('${ind.id}', '${ind.kode}', '${bukti.id}', '${bukti.nama.replace(/'/g, "\\'")}', '${ind.pertanyaan.replace(/'/g, "\\'")}')" style="background: #0891b2; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
+                                                        </button>
+                                                        ${hasUpload ? `
+                                                            <button onclick="deleteUpload('${lastUpload.id}')" style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                                <i class="fas fa-trash"></i> Hapus
+                                                            </button>
+                                                        ` : ''}
+                                                    ` : `
+                                                        <button disabled style="background: #e2e8f0; color: #94a3b8; padding: 5px 10px; border-radius: 5px; border: none; font-size: 0.8rem; width: 90px; cursor: not-allowed;">
+                                                            <i class="fas fa-lock"></i> Kunci
+                                                        </button>
+                                                    `)}
+                                                </div>
                                             </div>
                                         `;
                                     }).join('')}
@@ -580,20 +606,21 @@ window.saveAssignment = async function(indikatorId, btn) {
 // 8. SETUP DATA AWAL (ADMIN ONLY)
 // ══════════════════════════════════════════════
 window.setupDataPKKM = async function() {
-    if (!checkAdminAccess() || !confirm('⚠️ Isi database dengan indikator + sub-bukti PKKM lengkap?')) return;
+    if (!checkAdminAccess() || !confirm('⚠️ Isi database dengan indikator + sub-bukti PKKM lengkap sesuai SK MA. As\'adiyah Ereng-Ereng?')) return;
     try {
         const aspekList = [
-            { kode: 'A', nama: 'Usaha Pengembangan Madrasah' }, { kode: 'B', nama: 'Pelaksanaan Tugas Manajerial' },
-            { kode: 'C', nama: 'Pengembangan Kewirausahaan' }, { kode: 'D', nama: 'Supervisi Kepada Guru dan Tenaga Kependidikan' },
-            { kode: 'E', nama: 'Hasil Kinerja Kepala Madrasah' }
+            { kode: 'A', nama: 'Usaha Pengembangan Madrasah' }, 
+            { kode: 'B', nama: 'Pelaksanaan Tugas Manajerial' },
+            { kode: 'C', nama: 'Pengembangan Kewirausahaan' }, 
+            { kode: 'D', nama: 'Supervisi Kepada Guru dan Tenaga Kependidikan' }
         ];
         for (const asp of aspekList) await db.collection('pkkm_aspek').doc(`aspek_${asp.kode}`).set(asp);
         
-        const timA = ['Elis Harianto, S.Pd', 'Jamil Rahmat, S.Pd', 'Marhani, S.Pd', 'Ahmad Mudatsir, S.Pd'];
-        const timB = ['Irmayani, S.Pd', 'Wahda Nursimi, S.Pd', 'Risnasari, S.Pd'];
-        const timC = ['Niar, S.Pd', 'Muniratul Asri, S.Pd', 'Marwah, S.Pd.I'];
-        const timD = ['Nursyam, S.Pd', 'Atika, S.Pd', 'Haerani, S.Pd.I'];
-        const timE = ['Sumarni, S.E.', 'Khaerul, S.Ag', 'Hj. Murniati Mahdi, S.Pd'];
+        // DATA PANITIA SESUAI SK (DIPERBAIKI & DISINKRONISASI)
+        const timA = ['Nur Asia S.Pd', 'Eka Sasmita S.Sos', 'Fahrir S.Pd', 'Haerunnisa S.Pd M.Pd', 'Khusnul Inayah S.Pd', 'Erwin S.Pd', 'Panji S.Pd', 'Nur Faida Ulfa S.Kom'];
+        const timB = ['Wahyuni S.Pd', 'Nur Syamsi S.Pd', 'Andi Irnawanti Nursak S.Pd', 'Nur Hikmah S.Pd', 'Halijah S.Pd', 'Marwati S.Pd M.Pd', 'Lukman SE'];
+        const timC = ['Kasmidar S.Pd', 'Lisa Aswirayanti SE', 'Nur Syamsi S.Hum', 'Fajrul Ikhsan Alimuddin S.Pd'];
+        const timD = ['Nur Syamsi S.Pd.I', 'St. Muawwafah S.Pd', 'St. Syamsiah S.Ag', 'Nurul Faiqah Jamal S.Pd'];
         
         const indikatorList = [
             { aspek_id: 'aspek_A', kode: 'A.1.1.1', pertanyaan: 'Mampu mengembangkan struktur organisasi yang sesuai dengan kebutuhan program.', bukti_list: [
@@ -1090,49 +1117,7 @@ window.setupDataPKKM = async function() {
                 { id: 'D.4.3.4.1', nama: 'Program PKB guru' },
                 { id: 'D.4.3.4.2', nama: 'Laporan kegiatan pembinaan guru' },
                 { id: 'D.4.3.4.3', nama: 'Daftar hadir, notulen, foto kegiatan PKB guru' }
-            ], penugasan: timD },
-            { aspek_id: 'aspek_E', kode: 'E.5.1.1', pertanyaan: 'Prestasi akademik peserta didik.', bukti_list: [
-                { id: 'E.5.1.1.1', nama: 'Piagam/sertifikat kejuaraan akademik (tingkat kecamatan s.d. nasional)' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.1.2', pertanyaan: 'Prestasi non akademik peserta didik.', bukti_list: [
-                { id: 'E.5.1.2.1', nama: 'Piagam/sertifikat kejuaraan nonakademik (tingkat kecamatan s.d. nasional)' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.2.1', pertanyaan: 'Prestasi akademik pendidik dan tendik.', bukti_list: [
-                { id: 'E.5.2.1.1', nama: 'Piagam/sertifikat kejuaraan akademik GTK' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.2.2', pertanyaan: 'Prestasi non akademik pendidik dan tendik.', bukti_list: [
-                { id: 'E.5.2.2.1', nama: 'Piagam/sertifikat kejuaraan nonakademik GTK' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.3.1', pertanyaan: 'Kelebihan prestasi akademik dari madrasah lain.', bukti_list: [
-                { id: 'E.5.3.1.1', nama: 'Dokumen peringkat madrasah (tingkat kecamatan s.d. nasional)' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.3.2', pertanyaan: 'Kelebihan prestasi non akademik dari madrasah lain.', bukti_list: [
-                { id: 'E.5.3.2.1', nama: 'Dokumen peringkat madrasah (tingkat kecamatan s.d. nasional)' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.3.3', pertanyaan: 'Kelebihan prestasi akademik dan non akademik GTK.', bukti_list: [
-                { id: 'E.5.3.3.1', nama: 'Dokumen peringkat GTK' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.1', pertanyaan: 'Ijazah yang dimiliki kepala madrasah.', bukti_list: [
-                { id: 'E.5.4.1.1', nama: 'Fotokopi Ijazah terakhir Kepala Madrasah (S1/S2/S3)' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.2', pertanyaan: 'Pendidikan dan pelatihan yang pernah diikuti.', bukti_list: [
-                { id: 'E.5.4.2.1', nama: 'Sertifikat STTPL/Diklat minimal 3 buah' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.3', pertanyaan: 'Penguasaan ICT kepala madrasah.', bukti_list: [
-                { id: 'E.5.4.3.1', nama: 'Sertifikat pelatihan Microsoft Office/Internet' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.4', pertanyaan: 'Prestasi yang diraih oleh kepala madrasah.', bukti_list: [
-                { id: 'E.5.4.4.1', nama: 'Piagam/sertifikat kejuaraan kepala madrasah' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.5', pertanyaan: 'Kegiatan penelitian kependidikan.', bukti_list: [
-                { id: 'E.5.4.5.1', nama: 'Laporan Penelitian Tindakan Sekolah (PTS)/Karya Tulis Ilmiah' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.6', pertanyaan: 'Kegiatan pelibatan komite.', bukti_list: [
-                { id: 'E.5.4.6.1', nama: 'Dokumentasi pelibatan komite dan stakeholder' }
-            ], penugasan: timE },
-            { aspek_id: 'aspek_E', kode: 'E.5.4.7', pertanyaan: 'Kegiatan kemitraan dengan stakeholder.', bukti_list: [
-                { id: 'E.5.4.7.1', nama: 'Dokumen kemitraan dengan stakeholder pendidikan' }
-            ], penugasan: timE }
+            ], penugasan: timD }
         ];
         
         for (const ind of indikatorList) {
