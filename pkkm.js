@@ -151,8 +151,43 @@ function renderDashboard() {
         html += '<div class="indikator-list">';
 
         aspek.indikator.forEach(function(ind) {
-            var isAssigned = userData && ind.penugasan && ind.penugasan.some(function(p) { return p.toLowerCase().includes(userData.nama.toLowerCase().split(',')[0]); });
             
+            // ══════════════════════════════════════════════════════════
+            // LOGIKA PENUGASAN CERDAS (ANTI-AMBIGUITAS)
+            // ══════════════════════════════════════════════════════════
+            var isAssigned = false;
+            if (userData && ind.penugasan) {
+                // 1. Normalisasi nama user: huruf kecil, hapus titik/koma, rapikan spasi
+                var userNameNorm = userData.nama.toLowerCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+                var userWords = userNameNorm.split(' ');
+                
+                isAssigned = ind.penugasan.some(function(penugasanNama) {
+                    // 2. Normalisasi nama di penugasan
+                    var assignedNameNorm = penugasanNama.toLowerCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+                    var assignedWords = assignedNameNorm.split(' ');
+                    
+                    // A. Kecocokan Persis (Exact Match): "nur syamsi s pd" === "nur syamsi s pd"
+                    if (userNameNorm === assignedNameNorm) {
+                        return true;
+                    }
+                    
+                    // B. Kecocokan Subset Ketat: Semua kata di nama user HARUS ada di nama penugasan
+                    // DAN nama user minimal 2 kata (mencegah "nur" saja cocok dengan "nur asia")
+                    var allUserWordsMatch = userWords.every(function(w) { 
+                        return assignedWords.includes(w); 
+                    });
+                    
+                    if (allUserWordsMatch && userWords.length >= 2) {
+                        // Contoh: user "nur syamsi" akan cocok dengan "nur syamsi s pd"
+                        // TAPI TIDAK akan cocok dengan "nur asia s pd" (karena "syamsi" tidak ada di "nur asia")
+                        return true;
+                    }
+                    
+                    return false;
+                });
+            }
+            // ══════════════════════════════════════════════════════════
+
             html += '<div class="indikator-item" style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e2e8f0;">';
             html += '<div style="font-weight: 700; font-size: 1rem; color: #0f172a; margin-bottom: 6px;">';
             html += '<i class="fas fa-bullseye" style="color: #0891b2;"></i> ' + ind.kode + ' - ' + ind.pertanyaan;
@@ -329,11 +364,13 @@ window.switchUploadMode = function(mode) {
 window.openUploadModal = function(indId, kode, subBuktiId, subBuktiNama, pertanyaan) {
     if (!userData) { alert('Silakan login terlebih dahulu!'); return; }
     currentSubBuktiId = subBuktiId;
+    
     document.getElementById('modalIndikatorTitle').textContent = kode + ' - ' + pertanyaan;
     document.getElementById('modalBuktiTitle').textContent = 'Bukti: ' + subBuktiNama;
     document.getElementById('fileNameDisplay').textContent = '';
     document.getElementById('fileInput').value = '';
     document.getElementById('driveLinkInput').value = '';
+    
     switchUploadMode('file');
     document.getElementById('uploadModal').classList.add('active');
 };
@@ -501,10 +538,10 @@ window.setPassword = function(userId, email) {
 
 window.exportUsersToExcel = function() {
     if (allUsers.length === 0) return alert('Tidak ada data!');
-    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>table{border-collapse:collapse;width:100%}th{background:#0891b2;color:#fff;padding:12px;border:1px solid #ddd;text-align:left}td{padding:10px;border:1px solid #ddd}tr:nth-child(even){background:#f9fafb}</style></head><body><table><thead><tr><th>No</th><th>Nama</th><th>Email</th><th>Password</th><th>Role</th></tr></thead><tbody>';
+    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>table{border-collapse:collapse;width:100%}th{background:#0891b2;color:#fff;padding:12px;border:1px solid #ddd;text-align:left}td{padding:10px;border:1px solid #ddd}tr:nth-child(even){background:#f9fafb}.pwd{background:#fef3c7;color:#d97706;font-weight:bold;padding:4px 8px;border-radius:4px;text-align:center;font-family:monospace}.role{font-weight:bold;padding:4px 8px;border-radius:4px;text-align:center}</style></head><body><table><thead><tr><th>No</th><th>Nama</th><th>Email</th><th>Password</th><th>Role</th></tr></thead><tbody>';
     allUsers.forEach(function(u, i) {
         var roleBg = u.role === 'admin' ? '#fee2e2;color:#dc2626' : '#d1fae5;color:#059669';
-        html += '<tr><td>' + (i+1) + '</td><td>' + (u.nama||'') + '</td><td>' + (u.email||'') + '</td><td>' + (u.password||'') + '</td><td style="background:' + roleBg + ';font-weight:bold;padding:4px 8px;border-radius:4px;">' + (u.role||'guru').toUpperCase() + '</td></tr>';
+        html += '<tr><td>' + (i+1) + '</td><td>' + (u.nama||'') + '</td><td>' + (u.email||'') + '</td><td class="pwd">' + (u.password||'') + '</td><td class="role" style="background:' + roleBg + '">' + (u.role||'guru').toUpperCase() + '</td></tr>';
     });
     html += '</tbody></table></body></html>';
     var blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8' });
@@ -514,9 +551,6 @@ window.exportUsersToExcel = function() {
     alert('Berhasil mengunduh ' + allUsers.length + ' user!');
 };
 
-// ==========================================
-// FUNGSI TAMBAH USER BARU
-// ==========================================
 window.tambahUser = function() {
     if (!checkAdminAccess()) return;
     
@@ -567,9 +601,6 @@ window.tambahUser = function() {
     });
 };
 
-// ==========================================
-// FUNGSI HAPUS USER
-// ==========================================
 window.deleteUser = function(userId) {
     if (!checkAdminAccess() || !confirm('Yakin hapus user ini?')) return;
     db.collection('users').doc(userId).delete().then(function() { 
@@ -620,7 +651,7 @@ window.saveAssignment = function(indikatorId, btn) {
 };
 
 window.setupDataPKKM = function() {
-    if (!checkAdminAccess() || !confirm('⚠️ PERINGATAN: Semua data lama akan DIHAPUS dan diganti dengan 95 indikator PKKM (4 Dimensi A-D) untuk MA. As\'adiyah Ereng-Ereng.\n\nLanjutkan?')) return;
+    if (!checkAdminAccess() || !confirm('⚠️ PERINGATAN: Semua data lama akan DIHAPUS dan diganti dengan data sesuai SK MA. As\'adiyah Ereng-Ereng.\n\nLanjutkan?')) return;
     
     var deletePromises = [];
     deletePromises.push(db.collection('pkkm_aspek').get().then(function(snapshot) {
@@ -644,6 +675,7 @@ window.setupDataPKKM = function() {
         var promises = [];
         aspekList.forEach(function(asp) { promises.push(db.collection('pkkm_aspek').doc('aspek_' + asp.kode).set(asp)); });
         
+        // DATA PANITIA SESUAI SK (SUDAH DIPERBAIKI, TERMASUK PEMISAHAN NAMA YANG MENEMPEL)
         var timA = ['Nur Asia S.Pd', 'Eka Sasmita S.Sos', 'Fahrir S.Pd', 'Haerunnisa S.Pd M.Pd', 'Khusnul Inayah S.Pd', 'Erwin S.Pd', 'Panji S.Pd', 'Nur Faida Ulfa S.Kom'];
         var timB = ['Wahyuni S.Pd', 'Nur Syamsi S.Pd', 'Andi Irnawanti Nursak S.Pd', 'Nur Hikmah S.Pd', 'Halijah S.Pd', 'Marwati S.Pd M.Pd', 'Lukman SE'];
         var timC = ['Kasmidar S.Pd', 'Lisa Aswirayanti SE', 'Nur Syamsi S.Hum', 'Fajrul Ikhsan Alimuddin S.Pd'];
