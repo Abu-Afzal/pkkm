@@ -135,6 +135,26 @@ function renderDashboard() {
     }
     
     container.innerHTML = pkkmData.map(aspek => {
+        
+        // ══════════════════════════════════════════════════════════
+        // TAMBAHAN: SORTING INDIKATOR AGAR URUTAN ANGKA BENAR
+        // (Mencegah B.2.10.1 muncul sebelum B.2.1.1)
+        // ══════════════════════════════════════════════════════════
+        if (aspek.indikator && aspek.indikator.length > 0) {
+            aspek.indikator.sort(function(a, b) {
+                const partsA = a.kode.split('.').map(p => isNaN(p) ? p : parseInt(p, 10));
+                const partsB = b.kode.split('.').map(p => isNaN(p) ? p : parseInt(p, 10));
+                
+                for (let i = 0; i < Math.min(partsA.length, partsB.length); i++) {
+                    if (partsA[i] !== partsB[i]) {
+                        return partsA[i] > partsB[i] ? 1 : -1;
+                    }
+                }
+                return partsA.length - partsB.length;
+            });
+        }
+        // ══════════════════════════════════════════════════════════
+
         let aspekTotal = 0, aspekSelesai = 0;
         aspek.indikator.forEach(ind => {
             ind.bukti_uploads.forEach(b => {
@@ -193,29 +213,29 @@ function renderDashboard() {
                                                     ` : '<div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;"><i class="fas fa-clock"></i> Belum ada dokumen</div>'}
                                                 </div>
                                                 <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
-    ${hasUpload ? `
-        <button onclick='previewFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-            <i class="fas fa-eye"></i> Preview
-        </button>
-        <button onclick='downloadFile(${JSON.stringify(lastUpload).replace(/'/g, "\\'")})' style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-            <i class="fas fa-download"></i> Download
-        </button>
-    ` : ''}
-    ${userData ? (isAssigned ? `
-        <button onclick="openUploadModal('${ind.id}', '${ind.kode}', '${bukti.id}', '${bukti.nama.replace(/'/g, "\\'")}', '${ind.pertanyaan.replace(/'/g, "\\'")}')" style="background: #0891b2; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
-        </button>
-        ${hasUpload ? `
-            <button onclick="deleteUpload('${lastUpload.id}')" style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                <i class="fas fa-trash"></i> Hapus
-            </button>
-        ` : ''}
-    ` : `
-        <button disabled style="background: #e2e8f0; color: #94a3b8; padding: 5px 10px; border-radius: 5px; border: none; font-size: 0.8rem; width: 90px; cursor: not-allowed;">
-            <i class="fas fa-lock"></i> Kunci
-        </button>
-    `) : ''}
-</div>
+                                                    ${hasUpload ? `
+                                                        <button onclick="previewFile('${JSON.stringify(lastUpload).replace(/'/g, "\\'")}')" style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                            <i class="fas fa-eye"></i> Preview
+                                                        </button>
+                                                        <button onclick="downloadFile('${JSON.stringify(lastUpload).replace(/'/g, "\\'")}')" style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                            <i class="fas fa-download"></i> Download
+                                                        </button>
+                                                    ` : ''}
+                                                    ${userData ? (isAssigned ? `
+                                                        <button onclick="openUploadModal('${ind.id}', '${ind.kode}', '${bukti.id}', '${bukti.nama.replace(/'/g, "\\'")}', '${ind.pertanyaan.replace(/'/g, "\\'")}')" style="background: #0891b2; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
+                                                        </button>
+                                                        ${hasUpload ? `
+                                                            <button onclick="deleteUpload('${lastUpload.id}')" style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
+                                                                <i class="fas fa-trash"></i> Hapus
+                                                            </button>
+                                                        ` : ''}
+                                                    ` : `
+                                                        <button disabled style="background: #e2e8f0; color: #94a3b8; padding: 5px 10px; border-radius: 5px; border: none; font-size: 0.8rem; width: 90px; cursor: not-allowed;">
+                                                            <i class="fas fa-lock"></i> Kunci
+                                                        </button>
+                                                    `)}
+                                                </div>
                                             </div>
                                         `;
                                     }).join('')}
