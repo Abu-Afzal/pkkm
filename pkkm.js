@@ -21,6 +21,7 @@ let pkkmData = [];
 let allUsers = [];
 let currentSubBuktiId = null;
 const currentTahun = '2023-2026';
+let uploadCache = {};
 
 // ═════════════════════════════════════════════
 // 1. INIT & AUTH STATE
@@ -133,18 +134,15 @@ function renderDashboard() {
         container.innerHTML = '<div style="text-align: center; padding: 40px; color: #64748b;"><p>Belum ada data. Login sebagai admin dan jalankan "Setup Data Awal".</p></div>';
         return;
     }
-    
+
     container.innerHTML = pkkmData.map(aspek => {
-        
         // ══════════════════════════════════════════════════════════
-        // TAMBAHAN: SORTING INDIKATOR AGAR URUTAN ANGKA BENAR
-        // (Mencegah B.2.10.1 muncul sebelum B.2.1.1)
+        // SORTING INDIKATOR (B.2.1.1 sebelum B.2.10.1)
         // ══════════════════════════════════════════════════════════
         if (aspek.indikator && aspek.indikator.length > 0) {
             aspek.indikator.sort(function(a, b) {
                 const partsA = a.kode.split('.').map(p => isNaN(p) ? p : parseInt(p, 10));
                 const partsB = b.kode.split('.').map(p => isNaN(p) ? p : parseInt(p, 10));
-                
                 for (let i = 0; i < Math.min(partsA.length, partsB.length); i++) {
                     if (partsA[i] !== partsB[i]) {
                         return partsA[i] > partsB[i] ? 1 : -1;
@@ -153,7 +151,6 @@ function renderDashboard() {
                 return partsA.length - partsB.length;
             });
         }
-        // ══════════════════════════════════════════════════════════
 
         let aspekTotal = 0, aspekSelesai = 0;
         aspek.indikator.forEach(ind => {
@@ -164,103 +161,126 @@ function renderDashboard() {
         });
         const progress = aspekTotal > 0 ? Math.round((aspekSelesai / aspekTotal) * 100) : 0;
 
-        return `
-            <div class="aspek-item" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px; background: #fafafa;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <div class="aspek-title" style="font-weight: 700; color: #0e7490;"><i class="fas fa-folder-open"></i> Dimensi ${aspek.kode}: ${aspek.nama}</div>
-                    <span class="badge" style="background: ${progress === 100 ? '#dcfce7' : progress > 0 ? '#fef3c7' : '#fee2e2'}; color: ${progress === 100 ? '#166534' : progress > 0 ? '#92400e' : '#991b1b'}; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 700;">${progress}%</span>
-                </div>
-                <div style="background: #e2e8f0; height: 6px; border-radius: 3px; margin-bottom: 16px; overflow: hidden;">
-                    <div style="background: ${progress === 100 ? '#10b981' : '#0891b2'}; height: 100%; width: ${progress}%;"></div>
-                </div>
-                <div class="indikator-list">
-                    ${aspek.indikator.map(ind => {
-                        const isAssigned = userData && ind.penugasan && ind.penugasan.some(p => p.toLowerCase().includes(userData.nama.toLowerCase().split(',')[0]));
-                        
-                        return `
-                            <div class="indikator-item" style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e2e8f0;">
-                                <!-- JUDUL INDIKATOR -->
-                                <div style="font-weight: 700; font-size: 1rem; color: #0f172a; margin-bottom: 6px;">
-                                    <i class="fas fa-bullseye" style="color: #0891b2;"></i> ${ind.kode} - ${ind.pertanyaan}
-                                </div>
-                                
-                                <!-- PENANGGUNG JAWAB -->
-                                <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 14px; padding-left: 24px;">
-                                    <i class="fas fa-users"></i> <strong>Penanggung Jawab:</strong> ${ind.penugasan ? ind.penugasan.join(', ') : '-'}
-                                </div>
-                                
-                                <!-- DAFTAR SUB-BUKTI -->
-                                <div style="border-top: 1px dashed #e2e8f0; padding-top: 12px;">
-                                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 10px;">
-                                        <i class="fas fa-list-check"></i> Bukti yang harus diupload:
-                                    </div>
-                                    ${ind.bukti_uploads.map((bukti, idx) => {
-                                        const hasUpload = bukti.uploads.length > 0;
-                                        const lastUpload = hasUpload ? bukti.uploads[bukti.uploads.length - 1] : null;
-                                        const isMyUpload = lastUpload && lastUpload.guru_uid === userData?.uid;
-                                        
-                                        return `
-                                            <div style="background: ${hasUpload ? '#f0fdf4' : '#f8fafc'}; padding: 10px 12px; border-radius: 6px; margin-bottom: 8px; border-left: 4px solid ${hasUpload ? '#10b981' : '#cbd5e1'}; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                                                <div style="flex: 1; min-width: 0;">
-                                                    <div style="font-size: 0.9rem; font-weight: 600; color: #0f172a;">
-                                                        ${hasUpload ? '<i class="fas fa-check-circle" style="color: #10b981;"></i>' : '<i class="fas fa-circle" style="color: #cbd5e1;"></i>'} 
-                                                        ${idx + 1}. ${bukti.nama}
-                                                    </div>
-                                                    ${hasUpload ? `
-                                                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">
-                                                            <i class="fas fa-file"></i> ${lastUpload.file_name} - diupload oleh ${lastUpload.guru_nama}
-                                                        </div>
-                                                    ` : '<div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;"><i class="fas fa-clock"></i> Belum ada dokumen</div>'}
-                                                </div>
-                                                <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
-                                                    ${hasUpload ? `
-                                                        <button onclick="previewFile('${JSON.stringify(lastUpload).replace(/'/g, "\\'")}')" style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                                                            <i class="fas fa-eye"></i> Preview
-                                                        </button>
-                                                        <button onclick="downloadFile('${JSON.stringify(lastUpload).replace(/'/g, "\\'")}')" style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                                                            <i class="fas fa-download"></i> Download
-                                                        </button>
-                                                    ` : ''}
-                                                    ${userData ? (isAssigned ? `
-                                                        <button onclick="openUploadModal('${ind.id}', '${ind.kode}', '${bukti.id}', '${bukti.nama.replace(/'/g, "\\'")}', '${ind.pertanyaan.replace(/'/g, "\\'")}')" style="background: #0891b2; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                                                            <i class="fas fa-${hasUpload && isMyUpload ? 'sync-alt' : 'upload'}"></i> ${hasUpload && isMyUpload ? 'Ganti' : 'Upload'}
-                                                        </button>
-                                                        ${hasUpload ? `
-                                                            <button onclick="deleteUpload('${lastUpload.id}')" style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;">
-                                                                <i class="fas fa-trash"></i> Hapus
-                                                            </button>
-                                                        ` : ''}
-                                                    ` : `
-                                                        <button disabled style="background: #e2e8f0; color: #94a3b8; padding: 5px 10px; border-radius: 5px; border: none; font-size: 0.8rem; width: 90px; cursor: not-allowed;">
-                                                            <i class="fas fa-lock"></i> Kunci
-                                                        </button>
-                                                    `)}
-                                                </div>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-        `;
+        const indikatorHtml = aspek.indikator.map(ind => {
+            const isAssigned = userData && ind.penugasan && ind.penugasan.some(p =>
+                p.toLowerCase().includes(userData.nama.toLowerCase().split(',')[0])
+            );
+
+            const buktiHtml = ind.bukti_uploads.map((bukti, idx) => {
+                const hasUpload = bukti.uploads.length > 0;
+                const lastUpload = hasUpload ? bukti.uploads[bukti.uploads.length - 1] : null;
+                const isMyUpload = lastUpload && lastUpload.guru_uid === (userData ? userData.uid : null);
+
+                // Simpan ke cache dengan key = ID
+                if (hasUpload) {
+                    uploadCache[lastUpload.id] = lastUpload;
+                }
+
+                // ══════════════════════════════════════════════════════════
+                // BANGUN TOMBOL SECARA TERPISAH (hindari nested template)
+                // ══════════════════════════════════════════════════════════
+                let buttonsHtml = '';
+
+                if (hasUpload) {
+                    buttonsHtml += '<button onclick="previewFile(\'' + lastUpload.id + '\')" style="background: #6366f1; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;"><i class="fas fa-eye"></i> Preview</button>';
+                    buttonsHtml += '<button onclick="downloadFile(\'' + lastUpload.id + '\')" style="background: #10b981; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;"><i class="fas fa-download"></i> Download</button>';
+                }
+
+                if (userData) {
+                    if (isAssigned) {
+                        const safeIndId = ind.id.replace(/'/g, "\\'");
+                        const safeKode = ind.kode.replace(/'/g, "\\'");
+                        const safeBuktiId = bukti.id.replace(/'/g, "\\'");
+                        const safeBuktiNama = bukti.nama.replace(/'/g, "\\'");
+                        const safePertanyaan = ind.pertanyaan.replace(/'/g, "\\'");
+                        const uploadIcon = (hasUpload && isMyUpload) ? 'sync-alt' : 'upload';
+                        const uploadText = (hasUpload && isMyUpload) ? 'Ganti' : 'Upload';
+
+                        buttonsHtml += '<button onclick="openUploadModal(\'' + safeIndId + '\', \'' + safeKode + '\', \'' + safeBuktiId + '\', \'' + safeBuktiNama + '\', \'' + safePertanyaan + '\')" style="background: #0891b2; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;"><i class="fas fa-' + uploadIcon + '"></i> ' + uploadText + '</button>';
+
+                        if (hasUpload) {
+                            buttonsHtml += '<button onclick="deleteUpload(\'' + lastUpload.id + '\')" style="background: #ef4444; color: white; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; width: 90px;"><i class="fas fa-trash"></i> Hapus</button>';
+                        }
+                    } else {
+                        buttonsHtml += '<button disabled style="background: #e2e8f0; color: #94a3b8; padding: 5px 10px; border-radius: 5px; border: none; font-size: 0.8rem; width: 90px; cursor: not-allowed;"><i class="fas fa-lock"></i> Kunci</button>';
+                    }
+                }
+
+                const statusIcon = hasUpload
+                    ? '<i class="fas fa-check-circle" style="color: #10b981;"></i>'
+                    : '<i class="fas fa-circle" style="color: #cbd5e1;"></i>';
+
+                const statusInfo = hasUpload
+                    ? '<div style="font-size: 0.8rem; color: #64748b; margin-top: 4px;"><i class="fas fa-file"></i> ' + lastUpload.file_name + ' - diupload oleh ' + lastUpload.guru_nama + '</div>'
+                    : '<div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;"><i class="fas fa-clock"></i> Belum ada dokumen</div>';
+
+                return '<div style="background: ' + (hasUpload ? '#f0fdf4' : '#f8fafc') + '; padding: 10px 12px; border-radius: 6px; margin-bottom: 8px; border-left: 4px solid ' + (hasUpload ? '#10b981' : '#cbd5e1') + '; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">' +
+                    '<div style="flex: 1; min-width: 0;">' +
+                    '<div style="font-size: 0.9rem; font-weight: 600; color: #0f172a;">' + statusIcon + ' ' + (idx + 1) + '. ' + bukti.nama + '</div>' +
+                    statusInfo +
+                    '</div>' +
+                    '<div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">' +
+                    buttonsHtml +
+                    '</div>' +
+                    '</div>';
+            }).join('');
+
+            const penugasanText = ind.penugasan ? ind.penugasan.join(', ') : '-';
+
+            return '<div class="indikator-item" style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e2e8f0;">' +
+                '<div style="font-weight: 700; font-size: 1rem; color: #0f172a; margin-bottom: 6px;">' +
+                '<i class="fas fa-bullseye" style="color: #0891b2;"></i> ' + ind.kode + ' - ' + ind.pertanyaan +
+                '</div>' +
+                '<div style="font-size: 0.85rem; color: #64748b; margin-bottom: 14px; padding-left: 24px;">' +
+                '<i class="fas fa-users"></i> <strong>Penanggung Jawab:</strong> ' + penugasanText +
+                '</div>' +
+                '<div style="border-top: 1px dashed #e2e8f0; padding-top: 12px;">' +
+                '<div style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 10px;">' +
+                '<i class="fas fa-list-check"></i> Bukti yang harus diupload:' +
+                '</div>' +
+                buktiHtml +
+                '</div>' +
+                '</div>';
+        }).join('');
+
+        const bgBadge = progress === 100 ? '#dcfce7' : (progress > 0 ? '#fef3c7' : '#fee2e2');
+        const colorBadge = progress === 100 ? '#166534' : (progress > 0 ? '#92400e' : '#991b1b');
+        const colorBar = progress === 100 ? '#10b981' : '#0891b2';
+
+        return '<div class="aspek-item" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px; background: #fafafa;">' +
+            '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">' +
+            '<div class="aspek-title" style="font-weight: 700; color: #0e7490;"><i class="fas fa-folder-open"></i> Dimensi ' + aspek.kode + ': ' + aspek.nama + '</div>' +
+            '<span class="badge" style="background: ' + bgBadge + '; color: ' + colorBadge + '; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 700;">' + progress + '%</span>' +
+            '</div>' +
+            '<div style="background: #e2e8f0; height: 6px; border-radius: 3px; margin-bottom: 16px; overflow: hidden;">' +
+            '<div style="background: ' + colorBar + '; height: 100%; width: ' + progress + '%;"></div>' +
+            '</div>' +
+            '<div class="indikator-list">' + indikatorHtml + '</div>' +
+            '</div>';
     }).join('');
 }
 
 // ═════════════════════════════════════════════
 // FUNGSI PREVIEW & DOWNLOAD
 // ═════════════════════════════════════════════
-window.previewFile = function(uploadData) {
-    if (!uploadData) return;
+window.previewFile = function(uploadId) {
+    const uploadData = uploadCache[uploadId];
+    if (!uploadData) {
+        alert('❌ Data file tidak ditemukan di cache.');
+        return;
+    }
     if (uploadData.file_type === 'link' && uploadData.file_drive_link) {
         window.open(uploadData.file_drive_link, '_blank');
         return;
     }
     if (uploadData.file_base64) {
         try {
-            const byteCharacters = atob(uploadData.file_base64.split(',')[1]);
+            const base64Parts = uploadData.file_base64.split(',');
+            if (base64Parts.length < 2) {
+                alert('❌ Format file base64 tidak valid.');
+                return;
+            }
+            const byteCharacters = atob(base64Parts[1]);
             const byteNumbers = new Array(byteCharacters.length);
             for (let i = 0; i < byteCharacters.length; i++) {
                 byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -270,17 +290,24 @@ window.previewFile = function(uploadData) {
             const blobUrl = URL.createObjectURL(blob);
             const newWindow = window.open();
             if (newWindow) {
-                newWindow.document.write(`<!DOCTYPE html><html><head><title>Preview: ${uploadData.file_name || 'Dokumen'}</title><style>body{margin:0;padding:0;}iframe{width:100%;height:100vh;border:none;}</style></head><body><iframe src="${blobUrl}" type="application/pdf"></iframe></body></html>`);
+                newWindow.document.write('<!DOCTYPE html><html><head><title>Preview: ' + (uploadData.file_name || 'Dokumen') + '</title><style>body{margin:0;padding:0;}iframe{width:100%;height:100vh;border:none;}</style></head><body><iframe src="' + blobUrl + '" type="application/pdf"></iframe></body></html>');
                 newWindow.document.close();
+            } else {
+                alert('⚠️ Pop-up diblokir browser. Izinkan pop-up untuk preview.');
             }
         } catch (error) {
+            console.error('Error preview:', error);
             alert('❌ Gagal membuka preview.');
         }
     }
 };
 
-window.downloadFile = function(uploadData) {
-    if (!uploadData) return;
+window.downloadFile = function(uploadId) {
+    const uploadData = uploadCache[uploadId];
+    if (!uploadData) {
+        alert('❌ Data file tidak ditemukan di cache.');
+        return;
+    }
     if (uploadData.file_type === 'link' && uploadData.file_drive_link) {
         window.open(uploadData.file_drive_link, '_blank');
         return;
@@ -289,7 +316,9 @@ window.downloadFile = function(uploadData) {
         const link = document.createElement('a');
         link.href = uploadData.file_base64;
         link.download = uploadData.file_name || 'dokumen.pdf';
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
     }
 };
 
